@@ -1,11 +1,9 @@
-
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Book, Calendar, Layout, Search, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Index() {
-  // Add animation delays to elements as they load
   useEffect(() => {
     const elements = document.querySelectorAll('.animate-on-load');
     elements.forEach((el, i) => {

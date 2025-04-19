@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Github, Linkedin, Twitter } from "lucide-react";
 
@@ -89,9 +88,12 @@ export function Footer() {
           </div>
         </div>
         
-        <div className="mt-8 pt-8 border-t border-border">
+        <div className="mt-8 pt-8 border-t border-border flex flex-col items-center">
           <p className="text-center text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} NextMate. All rights reserved.
+            &copy; {new Date().getFullYear()} NextUP. All rights reserved.
+          </p>
+          <p className="text-center text-xs text-muted-foreground/70 mt-2">
+            Designed @ Anish
           </p>
         </div>
       </div>
