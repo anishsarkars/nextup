@@ -52,6 +52,17 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+                // NextMate custom colors
+                pastel: {
+                    blue: "#D3E4FD",
+                    green: "#F2FCE2",
+                    purple: "#E5DEFF",
+                    pink: "#FFDEE2",
+                    peach: "#FDE1D3",
+                    yellow: "#FEF7CD",
+                    orange: "#FEC6A1",
+                    gray: "#F1F0FB"
+                },
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
