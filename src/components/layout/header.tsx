@@ -23,7 +23,7 @@ export function Header() {
             <Link to="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 rounded-full pastel-gradient flex items-center justify-center relative">
                 <span className="font-semibold text-white">N</span>
-                <span className="absolute -top-1 -right-2 text-[10px] text-muted-foreground opacity-70">
+                <span className="absolute -top-1 -right-1 text-[8px] text-muted-foreground opacity-70">
                   @Anish
                 </span>
               </div>
