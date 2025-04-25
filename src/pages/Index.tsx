@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Book, Calendar, Layout, Search, Users } from "lucide-react";
@@ -48,7 +49,7 @@ export default function Index() {
                     </div>
                   ))}
                 </div>
-                <span>Join 2,000+ students already on NextMate</span>
+                <span>Join 2,000+ students already on NextUP</span>
               </div>
             </div>
             <div className="relative animate-scale-up">
@@ -107,7 +108,7 @@ export default function Index() {
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl font-bold mb-4">Everything you need to succeed</h2>
             <p className="text-muted-foreground">
-              NextMate brings together opportunities, collaborations, and skill-building in one seamless platform.
+              NextUP brings together opportunities, collaborations, and skill-building in one seamless platform.
             </p>
           </div>
 
@@ -153,7 +154,7 @@ export default function Index() {
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl font-bold mb-4">Ready to take your student journey to the next level?</h2>
             <p className="text-xl text-muted-foreground mb-8">
-              Join thousands of students already discovering opportunities and connecting with peers on NextMate.
+              Join thousands of students already discovering opportunities and connecting with peers on NextUP.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Link to="/auth/signup">

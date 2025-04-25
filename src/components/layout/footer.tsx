@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Github, Linkedin, Twitter } from "lucide-react";
 
@@ -7,7 +8,7 @@ export function Footer() {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-sm font-semibold mb-4">NextMate</h3>
+            <h3 className="text-sm font-semibold mb-4">NextUP</h3>
             <p className="text-sm text-muted-foreground">
               Connecting students with opportunities and each other.
             </p>

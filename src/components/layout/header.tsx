@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -20,14 +21,13 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full pastel-gradient flex items-center justify-center relative">
-                <span className="font-semibold text-white">N</span>
-                <span className="absolute -top-1 -right-1 text-[8px] text-muted-foreground opacity-70">
-                  @Anish
-                </span>
-              </div>
-              <span className="font-bold text-xl">NextUP</span>
+            <Link to="/" className="flex items-center space-x-3">
+              <img 
+                src="/lovable-uploads/f62aa61b-0a36-4e79-b9bf-9c92c6ac1af1.png" 
+                alt="NextUP Logo" 
+                className="h-8"
+              />
+              <span className="text-xs text-muted-foreground opacity-70">@Anish</span>
             </Link>
           </div>
 
