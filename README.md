@@ -1,40 +1,159 @@
-# Welcome to your Lovable project
+# Welcome to your NextUP project
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/32f9ecce-1aae-463f-b3de-d1306e47d5d0
+**URL**: nexttup.vercel.app
 
-## How can I edit this code?
+🌟 NextUP
+NextUP is a minimal yet powerful platform designed for students to discover opportunities, collaborate on projects, and exchange skills. Whether you're looking for scholarships, hackathons, or a team to build your next big idea — NextUP has you covered.
 
-There are several ways of editing your application.
+🚀 Features
+🔍 Discover
+Scholarships, fellowships, and grants (GrantGuru-style filtering)
 
-**Use Lovable**
+Hackathons, student-led events, and bootcamps
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/32f9ecce-1aae-463f-b3de-d1306e47d5d0) and start prompting.
+Personalized recommendations based on your skills and interests
 
-Changes made via Lovable will be committed automatically to this repo.
+🤝 Collaborate
+Post your project, startup, or hackathon idea
 
-**Use your preferred IDE**
+Allow others to join or request to join projects
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Smart teammate suggestions based on complementary skillsets
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Real-time notifications for approvals and invites
 
-Follow these steps:
+⚡ SkillSwap & Gigs
+Offer services like design, development, writing, and mentorship
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Book and get booked for short-term gigs with reviews and ratings
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Secure payments with Stripe integration
 
-# Step 3: Install the necessary dependencies.
-npm i
+🧑‍🎓 User Dashboard
+Track saved opportunities, active collaborations, and gigs
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Minimal profile with external links (LinkedIn, GitHub, Portfolio)
+
+Availability status and badges for milestones
+
+🎨 UI/UX Highlights
+Minimal & Modern: Soft pastel gradients, white space, and rounded edges for a clean experience
+
+Mobile-First: Responsive design with smooth transitions and animations
+
+Dark/Light Mode: Seamless toggle for personalized viewing
+
+Micro-Interactions: Hover effects, toast notifications, and real-time updates
+
+🔧 Tech Stack
+Frontend: React (Vite) + TailwindCSS + ShadCN UI
+
+Backend: Supabase (Auth, Database, Real-time Notifications)
+
+Payments: Stripe
+
+Deployment: Vercel
+
+🛠️ Getting Started
+Clone the repo:
+
+bash
+Copy
+Edit
+git clone https://github.com/your-username/nextup.git
+cd nextup
+Install dependencies:
+
+bash
+Copy
+Edit
+npm install
+Configure environment variables: Create a .env file with the following:
+
+env
+Copy
+Edit
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_STRIPE_PUBLIC_KEY=your-stripe-key
+Run the development server:
+
+bash
+Copy
+Edit
 npm run dev
-```
+Deploy on Vercel:
+Follow Vercel’s deployment instructions for seamless production setup.
+
+📂 Project Structure
+java
+Copy
+Edit
+nextup/
+├── public/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   ├── hooks/
+│   ├── services/
+│   ├── utils/
+│   ├── styles/
+│   └── assets/
+├── .env
+├── package.json
+└── README.md
+🔑 Key Functionalities
+Authentication: OAuth (GitHub/Google) & email/password login
+
+Project & Gig Posting: Step-by-step wizards for creating and managing posts
+
+Real-time Notifications: Supabase channels for invites, approvals, and updates
+
+Filtering & Recommendations: Skill-based matching for projects and gigs
+
+Payment Integration: Secure Stripe checkout for gigs and bookings
+
+📌 Inspiration & Differentiators
+Inspired by platforms like:
+
+Lu.ma
+
+Devfolio
+
+Unstop
+
+Topmate
+
+NextUP brings a unique twist with:
+
+Skill complementarity matching
+
+Lightweight profiles with external link focus
+
+Streamlined project & event management
+
+📣 Contributing
+Contributions are welcome!
+
+Fork the repo
+
+Create a new branch
+
+Make your changes
+
+Submit a pull request
+
+🙌 Acknowledgements
+Designed @ Anish
+Built with ❤️ for students, by students.
+
+📄 License
+MIT
+
+🌐 Live Demo
+Check out the live platform: nexttup.vercel.app
 
 **Edit a file directly in GitHub**
 
@@ -49,25 +168,3 @@ npm run dev
 - Select the "Codespaces" tab.
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/32f9ecce-1aae-463f-b3de-d1306e47d5d0) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
