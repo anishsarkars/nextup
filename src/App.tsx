@@ -38,7 +38,7 @@ const App = () => (
             </Route>
             
             {/* Auth routes */}
-            <Route element={<AuthLayout />}>
+            <Route element={<AuthLayout children={undefined} />}>
               <Route path="/auth/login" element={<Login />} />
               <Route path="/auth/signup" element={<SignUp />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
