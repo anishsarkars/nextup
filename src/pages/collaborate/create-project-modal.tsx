@@ -4,231 +4,471 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { FormWizard } from "@/components/forms/form-wizard";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { useQueryClient } from "@tanstack/react-query";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import { supabase } from "@/lib/supabase";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { MultiSelector } from "@/components/ui/multi-selector";
+import { X } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+
+// Schema for project creation
+const projectSchema = z.object({
+  title: z.string().min(5, "Title must be at least 5 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  skills_required: z.array(z.string()).min(1, "At least one skill is required"),
+  roles_needed: z.array(z.string()).min(1, "At least one role is required"),
+  team_size: z.string().min(1, "Team size is required"),
+  stage: z.string().min(1, "Project stage is required"),
+  deadline: z.string().optional(),
+  external_link: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+});
+
+type ProjectFormValues = z.infer<typeof projectSchema>;
 
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProjectCreated?: () => void;
 }
 
-const projectSchema = z.object({
-  title: z.string().min(3, { message: "Title must be at least 3 characters." }),
-  description: z.string().min(10, { message: "Description must be at least 10 characters." }),
-  category: z.string().min(1, { message: "Please select a category." }),
-  tags: z.array(z.string()).optional(),
-  is_private: z.boolean().default(false),
-});
-
-type ProjectSchemaType = z.infer<typeof projectSchema>;
-
-export default function CreateProjectModal({ 
-  isOpen, 
-  onClose, 
-  onProjectCreated 
-}: CreateProjectModalProps) {
+export default function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isLoading, setIsLoading] = useState(false);
-  const supabaseConfigured = isSupabaseConfigured();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentSkill, setCurrentSkill] = useState("");
+  const [currentRole, setCurrentRole] = useState("");
   
-  const { register, handleSubmit, formState: { errors }, control, reset } = useForm<ProjectSchemaType>({
+  const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
-      is_private: false,
+      title: "",
+      description: "",
+      skills_required: [],
+      roles_needed: [],
+      team_size: "",
+      stage: "",
+      deadline: "",
+      external_link: "",
     },
   });
 
-  const categories = [
-    "Web Development",
-    "Mobile App Development",
-    "Data Science",
-    "Machine Learning",
-    "AI",
-    "UI/UX Design",
-    "Graphic Design",
-    "Marketing",
-    "Business",
-    "Other",
+  // Steps for the wizard
+  const steps = [
+    {
+      title: "Basics",
+      description: "Project title and description",
+      content: (
+        <div className="space-y-4">
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Project Title</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter a concise title for your project" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Describe your project idea and goals" 
+                    {...field} 
+                    className="min-h-[120px]"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      ),
+    },
+    {
+      title: "Skills & Roles",
+      description: "What skills and roles are needed?",
+      content: (
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <FormLabel>Required Skills</FormLabel>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {form.watch("skills_required").map((skill, index) => (
+                <Badge key={index} variant="secondary" className="text-sm py-1 px-3">
+                  {skill}
+                  <X
+                    className="ml-1 h-3 w-3 cursor-pointer"
+                    onClick={() => {
+                      const currentSkills = form.getValues("skills_required");
+                      form.setValue(
+                        "skills_required",
+                        currentSkills.filter((_, i) => i !== index)
+                      );
+                    }}
+                  />
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. React, Python, UI/UX"
+                value={currentSkill}
+                onChange={(e) => setCurrentSkill(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && currentSkill.trim()) {
+                    e.preventDefault();
+                    const currentSkills = form.getValues("skills_required");
+                    if (!currentSkills.includes(currentSkill.trim())) {
+                      form.setValue("skills_required", [
+                        ...currentSkills,
+                        currentSkill.trim(),
+                      ]);
+                    }
+                    setCurrentSkill("");
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={() => {
+                  if (currentSkill.trim()) {
+                    const currentSkills = form.getValues("skills_required");
+                    if (!currentSkills.includes(currentSkill.trim())) {
+                      form.setValue("skills_required", [
+                        ...currentSkills,
+                        currentSkill.trim(),
+                      ]);
+                    }
+                    setCurrentSkill("");
+                  }
+                }}
+              >
+                Add
+              </Button>
+            </div>
+            {form.formState.errors.skills_required && (
+              <p className="text-sm text-destructive mt-2">
+                {form.formState.errors.skills_required.message}
+              </p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <FormLabel>Roles Needed</FormLabel>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {form.watch("roles_needed").map((role, index) => (
+                <Badge key={index} variant="outline" className="text-sm py-1 px-3">
+                  {role}
+                  <X
+                    className="ml-1 h-3 w-3 cursor-pointer"
+                    onClick={() => {
+                      const currentRoles = form.getValues("roles_needed");
+                      form.setValue(
+                        "roles_needed",
+                        currentRoles.filter((_, i) => i !== index)
+                      );
+                    }}
+                  />
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. Frontend Developer, UI Designer"
+                value={currentRole}
+                onChange={(e) => setCurrentRole(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && currentRole.trim()) {
+                    e.preventDefault();
+                    const currentRoles = form.getValues("roles_needed");
+                    if (!currentRoles.includes(currentRole.trim())) {
+                      form.setValue("roles_needed", [
+                        ...currentRoles,
+                        currentRole.trim(),
+                      ]);
+                    }
+                    setCurrentRole("");
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={() => {
+                  if (currentRole.trim()) {
+                    const currentRoles = form.getValues("roles_needed");
+                    if (!currentRoles.includes(currentRole.trim())) {
+                      form.setValue("roles_needed", [
+                        ...currentRoles,
+                        currentRole.trim(),
+                      ]);
+                    }
+                    setCurrentRole("");
+                  }
+                }}
+              >
+                Add
+              </Button>
+            </div>
+            {form.formState.errors.roles_needed && (
+              <p className="text-sm text-destructive mt-2">
+                {form.formState.errors.roles_needed.message}
+              </p>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Details",
+      description: "Team size, stage, and deadlines",
+      content: (
+        <div className="space-y-4">
+          <FormField
+            control={form.control}
+            name="team_size"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Team Size</FormLabel>
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select team size" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="1-2">1-2 members</SelectItem>
+                    <SelectItem value="2-4">2-4 members</SelectItem>
+                    <SelectItem value="3-5">3-5 members</SelectItem>
+                    <SelectItem value="5+">5+ members</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="stage"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Project Stage</FormLabel>
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select project stage" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Ideation">Ideation</SelectItem>
+                    <SelectItem value="Planning">Planning</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Prototype">Prototype</SelectItem>
+                    <SelectItem value="Development">Development</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="deadline"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Deadline (Optional)</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="external_link"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>External Link (Optional)</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="url" 
+                    placeholder="e.g. GitHub repository, Figma design" 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      ),
+    },
+    {
+      title: "Review",
+      description: "Review and publish your project",
+      content: (
+        <div className="space-y-4">
+          <div>
+            <h3 className="font-medium">Project Title</h3>
+            <p className="text-muted-foreground">{form.getValues("title")}</p>
+          </div>
+          <div>
+            <h3 className="font-medium">Description</h3>
+            <p className="text-muted-foreground">{form.getValues("description")}</p>
+          </div>
+          <div>
+            <h3 className="font-medium">Required Skills</h3>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {form.getValues("skills_required").map((skill, index) => (
+                <Badge key={index} variant="secondary">{skill}</Badge>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="font-medium">Roles Needed</h3>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {form.getValues("roles_needed").map((role, index) => (
+                <Badge key={index} variant="outline">{role}</Badge>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="font-medium">Team Size</h3>
+              <p className="text-muted-foreground">{form.getValues("team_size")}</p>
+            </div>
+            <div>
+              <h3 className="font-medium">Project Stage</h3>
+              <p className="text-muted-foreground">{form.getValues("stage")}</p>
+            </div>
+            {form.getValues("deadline") && (
+              <div>
+                <h3 className="font-medium">Deadline</h3>
+                <p className="text-muted-foreground">{form.getValues("deadline")}</p>
+              </div>
+            )}
+            {form.getValues("external_link") && (
+              <div>
+                <h3 className="font-medium">External Link</h3>
+                <p className="text-muted-foreground">{form.getValues("external_link")}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      ),
+    },
   ];
-
-  const handleCreateProject = async (data: ProjectSchemaType) => {
+  
+  const handleCreateProject = async () => {
     if (!user) {
       toast({
         title: "Authentication required",
         description: "Please sign in to create a project",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
-    setIsLoading(true);
-
+    
+    setIsSubmitting(true);
+    
     try {
-      if (!supabaseConfigured) {
-        // Handle demo mode
-        setTimeout(() => {
-          toast({
-            title: "Demo Mode",
-            description: "Project created successfully in demo mode! In a production environment, this would be saved to Supabase.",
-          });
-          
-          // Reset form and close modal
-          reset();
-          setIsLoading(false);
-          onProjectCreated?.();
-          onClose();
-        }, 1000);
-        return;
-      }
-
-      const { error } = await supabase.from("projects").insert({
-        ...data,
-        owner_id: user.id,
-        created_at: new Date().toISOString(),
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Project created",
-        description: "Your project has been created successfully",
-      });
-
-      // Invalidate and refetch projects using the proper syntax for TanStack Query v4+
-      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      const values = form.getValues();
       
-      // Reset the form
-      reset();
-      onProjectCreated?.();
+      // Prepare tags from skills for better searchability
+      const tags = [...new Set([...values.skills_required, ...values.roles_needed])];
+      
+      const { error } = await supabase
+        .from("projects")
+        .insert({
+          title: values.title,
+          description: values.description,
+          skills_required: values.skills_required,
+          roles_needed: values.roles_needed,
+          team_size: values.team_size,
+          stage: values.stage,
+          deadline: values.deadline || null,
+          external_link: values.external_link || null,
+          creator_id: user.id,
+          tags: tags,
+          created_at: new Date().toISOString(),
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Project created!",
+        description: "Your project has been published successfully.",
+      });
+      
+      // Reset form and close modal
+      form.reset();
+      
+      // Invalidate projects query to refetch latest data
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["user-projects", user.id] });
+      
       onClose();
     } catch (error: any) {
       console.error("Error creating project:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to create project",
-        variant: "destructive",
+        title: "Failed to create project",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive"
       });
-      setIsLoading(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-6">
         <DialogHeader>
-          <DialogTitle>Create a New Project</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleCreateProject)} className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <label htmlFor="title">Title</label>
-            <Input id="title" placeholder="Project Title" {...register("title")} />
-            {errors.title && (
-              <p className="text-sm text-red-500">{errors.title.message}</p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="description">Description</label>
-            <Textarea
-              id="description"
-              placeholder="Project Description"
-              {...register("description")}
+        
+        <Form {...form}>
+          <form className="space-y-4">
+            <FormWizard
+              steps={steps}
+              onComplete={handleCreateProject}
+              isSubmitting={isSubmitting}
+              submitButtonText="Create Project"
             />
-            {errors.description && (
-              <p className="text-sm text-red-500">{errors.description.message}</p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="category">Category</label>
-            <Select
-              onValueChange={(value) => {
-                const field = document.querySelector(`input[name="category"]`);
-                if (field) {
-                  (field as HTMLInputElement).value = value;
-                  const event = new Event('input', { bubbles: true });
-                  field.dispatchEvent(event);
-                }
-              }}
-              defaultValue="">
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input type="hidden" {...register("category")} />
-            {errors.category && (
-              <p className="text-sm text-red-500">{errors.category.message}</p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="tags">Tags</label>
-            <MultiSelector 
-              control={control}
-              name="tags"
-              placeholder="Add some tags"
-              options={[
-                { value: "react", label: "React" },
-                { value: "typescript", label: "TypeScript" },
-                { value: "javascript", label: "JavaScript" },
-                { value: "node", label: "Node.js" },
-                { value: "python", label: "Python" },
-                { value: "django", label: "Django" },
-                { value: "flask", label: "Flask" },
-                { value: "tailwindcss", label: "TailwindCSS" },
-                { value: "nextjs", label: "Next.js" },
-                { value: "supabase", label: "Supabase" },
-              ]}
-            />
-            {errors.tags && (
-              <p className="text-sm text-red-500">{errors.tags.message}</p>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="is_private"
-              {...register("is_private")}
-              defaultChecked={false}
-            />
-            <label
-              htmlFor="is_private"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Private Project?
-            </label>
-          </div>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create Project"}
-          </Button>
-          {!supabaseConfigured && (
-            <p className="text-xs text-muted-foreground text-center">
-              Running in demo mode. Project data won't be permanently stored.
-            </p>
-          )}
-        </form>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

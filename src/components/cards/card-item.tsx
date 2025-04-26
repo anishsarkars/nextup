@@ -5,15 +5,15 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookmarkIcon, ExternalLink } from "lucide-react";
+import { BookmarkIcon, ExternalLink, Heart } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSupabaseData } from "@/hooks/use-supabase-data";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface CardItemProps {
   id: string;
-  type: 'scholarship' | 'event' | 'project' | 'gig' | 'hackathon';
+  type: 'scholarship' | 'event' | 'project' | 'gig';
   title: string;
   description: string;
   tags: string[];
@@ -30,7 +30,6 @@ interface CardItemProps {
   }[];
   actionLabel?: string;
   onAction?: () => void;
-  onBookmark?: () => Promise<void>;
 }
 
 export function CardItem({
@@ -46,14 +45,13 @@ export function CardItem({
   metadata = [],
   actionLabel = "View Details",
   onAction,
-  onBookmark,
 }: CardItemProps) {
   const { user } = useAuth();
   const { toggleBookmark } = useSupabaseData();
-  const { toast } = useToast();
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
   const [isBookmarking, setIsBookmarking] = useState(false);
 
+  // Get background color for types
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'scholarship':
@@ -64,13 +62,12 @@ export function CardItem({
         return 'bg-pastel-green/20';
       case 'gig':
         return 'bg-pastel-orange/20';
-      case 'hackathon':
-        return 'bg-pastel-purple/20';
       default:
         return 'bg-muted';
     }
   };
 
+  // Handle bookmark toggle
   const handleBookmarkToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -83,24 +80,20 @@ export function CardItem({
       });
       return;
     }
-
+    
     setIsBookmarking(true);
     
     try {
-      if (onBookmark) {
-        await onBookmark();
-      } else {
-        const { bookmarked, error } = await toggleBookmark(type, id, user.id);
-        
-        if (error) throw error;
-        
-        setIsBookmarked(bookmarked);
-        
-        toast({
-          title: bookmarked ? "Added to bookmarks" : "Removed from bookmarks",
-          description: bookmarked ? `${title} has been bookmarked` : `${title} has been removed from bookmarks`,
-        });
-      }
+      const { bookmarked, error } = await toggleBookmark(type, id, user.id);
+      
+      if (error) throw error;
+      
+      setIsBookmarked(bookmarked);
+      
+      toast({
+        title: bookmarked ? "Added to bookmarks" : "Removed from bookmarks",
+        description: bookmarked ? `${title} has been bookmarked` : `${title} has been removed from bookmarks`,
+      });
     } catch (error) {
       console.error('Error toggling bookmark:', error);
       toast({
@@ -131,7 +124,6 @@ export function CardItem({
             {type === 'event' && <span className="text-lg">📅</span>}
             {type === 'project' && <span className="text-lg">👥</span>}
             {type === 'gig' && <span className="text-lg">💼</span>}
-            {type === 'hackathon' && <span className="text-lg">🚀</span>}
           </div>
         )}
         <div className="flex-1">

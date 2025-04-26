@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ import {
 } from "lucide-react";
 import { ErrorFallback } from "@/components/ui/error-fallback";
 import { CardItem } from "@/components/cards/card-item";
-import { supabase, isSupabaseConfigured, getMockData } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import CreateProjectModal from "./create-project-modal";
@@ -63,23 +64,7 @@ export default function Collaborate() {
     queryKey: ["projects", searchQuery, sortBy],
     queryFn: async () => {
       if (!supabaseConfigured) {
-        // Return mock data when Supabase is not configured
-        let mockData = getMockData('projects') as Project[];
-        
-        // Apply filtering
-        if (searchQuery) {
-          mockData = mockData.filter(project => 
-            project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            project.description.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-        }
-        
-        // Apply sorting
-        if (sortBy === "newest") {
-          mockData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        }
-        
-        return mockData;
+        return [];
       }
 
       try {
@@ -122,6 +107,7 @@ export default function Collaborate() {
         throw error;
       }
     },
+    enabled: supabaseConfigured,
   });
 
   // Handle project creation
@@ -147,8 +133,9 @@ export default function Collaborate() {
 
     if (!supabaseConfigured) {
       toast({
-        title: "Demo Mode",
-        description: "Project joining is available after connecting to Supabase",
+        title: "Supabase not configured",
+        description: "Joining projects requires Supabase configuration.",
+        variant: "destructive",
       });
       return;
     }
@@ -261,7 +248,12 @@ export default function Collaborate() {
           </div>
         </div>
 
-        {isLoading ? (
+        {!supabaseConfigured ? (
+          <ErrorFallback
+            title="Supabase Not Configured"
+            message="Project data requires a Supabase connection. Please set up your environment variables."
+          />
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>

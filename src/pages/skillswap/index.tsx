@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import { supabase, isSupabaseConfigured, getMockData } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CardItem } from "@/components/cards/card-item";
@@ -45,7 +45,6 @@ export default function SkillSwap() {
   const [activeTab, setActiveTab] = useState("services");
   const [searchQuery, setSearchQuery] = useState("");
   const [showGigModal, setShowGigModal] = useState(false);
-  const supabaseConfigured = isSupabaseConfigured();
   
   // Fetch services (offerings)
   const { 
@@ -55,25 +54,6 @@ export default function SkillSwap() {
   } = useQuery({
     queryKey: ["gigs-services", searchQuery],
     queryFn: async () => {
-      if (!supabaseConfigured) {
-        // Return mock data when Supabase is not configured
-        const mockData = getMockData('gigs');
-        
-        // Filter for offerings only
-        let filteredData = mockData.filter(gig => gig.gig_type === 'offering');
-        
-        // Apply search query if provided
-        if (searchQuery) {
-          filteredData = filteredData.filter(gig => 
-            gig.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-            gig.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            gig.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-          );
-        }
-        
-        return filteredData;
-      }
-
       try {
         let query = supabase.from("gigs").select(`
           *,
@@ -119,25 +99,6 @@ export default function SkillSwap() {
   } = useQuery({
     queryKey: ["gigs-seeking", searchQuery],
     queryFn: async () => {
-      if (!supabaseConfigured) {
-        // Return mock data when Supabase is not configured
-        const mockData = getMockData('gigs');
-        
-        // Filter for seeking only
-        let filteredData = mockData.filter(gig => gig.gig_type === 'seeking');
-        
-        // Apply search query if provided
-        if (searchQuery) {
-          filteredData = filteredData.filter(gig => 
-            gig.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-            gig.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            gig.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-          );
-        }
-        
-        return filteredData;
-      }
-
       try {
         let query = supabase.from("gigs").select(`
           *,
@@ -413,6 +374,10 @@ export default function SkillSwap() {
             )}
           </TabsContent>
         </Tabs>
+        
+        <div className="mt-8 text-center">
+          <Button variant="outline">Load More</Button>
+        </div>
       </div>
       
       {/* Post Gig Modal */}

@@ -22,7 +22,7 @@ import NotFound from "./pages/NotFound";
 import { isSupabaseConfigured } from "./lib/supabase";
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,10 +57,10 @@ const App = () => {
           {showConfigWarning && (
             <div className="fixed top-4 right-4 z-50 w-96 max-w-[90vw]">
               <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Demo Mode Active</AlertTitle>
+                <ExclamationTriangleIcon className="h-4 w-4" />
+                <AlertTitle>Supabase Configuration Missing</AlertTitle>
                 <AlertDescription>
-                  The app is running with demo data. For a full experience, connect Supabase by setting the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.
+                  Your app is running with placeholder Supabase credentials. Please set the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables for full functionality.
                 </AlertDescription>
               </Alert>
             </div>
