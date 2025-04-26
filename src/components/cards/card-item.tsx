@@ -52,7 +52,6 @@ export function CardItem({
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
   const [isBookmarking, setIsBookmarking] = useState(false);
 
-  // Get background color for types
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'scholarship':
@@ -70,7 +69,6 @@ export function CardItem({
     }
   };
 
-  // Handle bookmark toggle
   const handleBookmarkToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
