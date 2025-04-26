@@ -202,7 +202,7 @@ export function useSupabaseData() {
 
   // Toggle bookmark for a user
   async function toggleBookmark(
-    itemType: 'project' | 'scholarship' | 'event' | 'gig',
+    itemType: 'project' | 'scholarship' | 'event' | 'gig' | 'hackathon',
     itemId: string,
     userId: string
   ): Promise<{ bookmarked: boolean; error: any }> {
@@ -272,7 +272,7 @@ export function useSupabaseData() {
 
   // Check if an item is bookmarked
   async function isBookmarked(
-    itemType: 'project' | 'scholarship' | 'event' | 'gig',
+    itemType: 'project' | 'scholarship' | 'event' | 'gig' | 'hackathon',
     itemId: string,
     userId: string
   ): Promise<boolean> {
@@ -300,7 +300,7 @@ export function useSupabaseData() {
   // Get user's bookmarks
   async function getUserBookmarks(
     userId: string,
-    itemType?: 'project' | 'scholarship' | 'event' | 'gig'
+    itemType?: 'project' | 'scholarship' | 'event' | 'gig' | 'hackathon'
   ): Promise<{ data: any[]; error: any }> {
     setLoading(true);
     

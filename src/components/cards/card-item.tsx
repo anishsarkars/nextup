@@ -1,13 +1,14 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookmarkIcon, ExternalLink, Heart } from "lucide-react";
+import { BookmarkIcon, ExternalLink } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSupabaseData } from "@/hooks/use-supabase-data";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface CardItemProps {
@@ -49,6 +50,7 @@ export function CardItem({
 }: CardItemProps) {
   const { user } = useAuth();
   const { toggleBookmark } = useSupabaseData();
+  const { toast } = useToast();
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
   const [isBookmarking, setIsBookmarking] = useState(false);
 

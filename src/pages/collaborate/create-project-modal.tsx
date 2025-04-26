@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +19,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MultiSelector } from "@/components/ui/multi-selector"; // Ensure this component exists or create it
+import { MultiSelector } from "@/components/ui/multi-selector";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -94,8 +95,8 @@ export default function CreateProjectModal({
         description: "Your project has been created successfully",
       });
 
-      // Invalidate and refetch projects
-      await queryClient.invalidateQueries("projects");
+      // Invalidate and refetch projects using the proper syntax for TanStack Query v4+
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
       
       // Reset the form
       reset();
@@ -141,18 +142,32 @@ export default function CreateProjectModal({
           </div>
           <div className="grid gap-2">
             <label htmlFor="category">Category</label>
-            <Select control={control} name="category">
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              <Select
+                onValueChange={(value) => {
+                  // Find the right form field and set its value
+                  const field = document.querySelector(`input[name="category"]`);
+                  if (field) {
+                    (field as HTMLInputElement).value = value;
+                    // Trigger a change event
+                    const event = new Event('input', { bubbles: true });
+                    field.dispatchEvent(event);
+                  }
+                }}
+                defaultValue="">
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <input type="hidden" {...register("category")} />
+            </div>
             {errors.category && (
               <p className="text-sm text-red-500">{errors.category.message}</p>
             )}
