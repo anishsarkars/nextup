@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -13,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 interface CardItemProps {
   id: string;
-  type: 'scholarship' | 'event' | 'project' | 'gig';
+  type: 'scholarship' | 'event' | 'project' | 'gig' | 'hackathon';
   title: string;
   description: string;
   tags: string[];
@@ -30,6 +29,7 @@ interface CardItemProps {
   }[];
   actionLabel?: string;
   onAction?: () => void;
+  onBookmark?: () => Promise<void>;
 }
 
 export function CardItem({
@@ -45,6 +45,7 @@ export function CardItem({
   metadata = [],
   actionLabel = "View Details",
   onAction,
+  onBookmark,
 }: CardItemProps) {
   const { user } = useAuth();
   const { toggleBookmark } = useSupabaseData();
@@ -62,6 +63,8 @@ export function CardItem({
         return 'bg-pastel-green/20';
       case 'gig':
         return 'bg-pastel-orange/20';
+      case 'hackathon':
+        return 'bg-pastel-purple/20';
       default:
         return 'bg-muted';
     }
@@ -80,20 +83,24 @@ export function CardItem({
       });
       return;
     }
-    
+
     setIsBookmarking(true);
     
     try {
-      const { bookmarked, error } = await toggleBookmark(type, id, user.id);
-      
-      if (error) throw error;
-      
-      setIsBookmarked(bookmarked);
-      
-      toast({
-        title: bookmarked ? "Added to bookmarks" : "Removed from bookmarks",
-        description: bookmarked ? `${title} has been bookmarked` : `${title} has been removed from bookmarks`,
-      });
+      if (onBookmark) {
+        await onBookmark();
+      } else {
+        const { bookmarked, error } = await toggleBookmark(type, id, user.id);
+        
+        if (error) throw error;
+        
+        setIsBookmarked(bookmarked);
+        
+        toast({
+          title: bookmarked ? "Added to bookmarks" : "Removed from bookmarks",
+          description: bookmarked ? `${title} has been bookmarked` : `${title} has been removed from bookmarks`,
+        });
+      }
     } catch (error) {
       console.error('Error toggling bookmark:', error);
       toast({
@@ -124,6 +131,7 @@ export function CardItem({
             {type === 'event' && <span className="text-lg">📅</span>}
             {type === 'project' && <span className="text-lg">👥</span>}
             {type === 'gig' && <span className="text-lg">💼</span>}
+            {type === 'hackathon' && <span className="text-lg">🚀</span>}
           </div>
         )}
         <div className="flex-1">

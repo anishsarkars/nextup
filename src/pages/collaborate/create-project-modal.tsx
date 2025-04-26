@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,9 +46,10 @@ type ProjectFormValues = z.infer<typeof projectSchema>;
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onProjectCreated: () => void;
 }
 
-export default function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
+export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }: CreateProjectModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -71,7 +71,6 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
     },
   });
 
-  // Steps for the wizard
   const steps = [
     {
       title: "Basics",
@@ -390,7 +389,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
       ),
     },
   ];
-  
+
   const handleCreateProject = async () => {
     if (!user) {
       toast({
@@ -439,6 +438,8 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["user-projects", user.id] });
       
+      // Call the onProjectCreated callback
+      onProjectCreated();
       onClose();
     } catch (error: any) {
       console.error("Error creating project:", error);
@@ -451,7 +452,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
       setIsSubmitting(false);
     }
   };
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-6">
