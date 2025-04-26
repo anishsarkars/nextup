@@ -2,12 +2,13 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Get environment variables with proper fallbacks
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Using placeholder values that won't throw errors when empty
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    'Missing Supabase credentials. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.'
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn(
+    'Missing Supabase credentials. The app will load, but database functionality will not work. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.'
   );
 }
 

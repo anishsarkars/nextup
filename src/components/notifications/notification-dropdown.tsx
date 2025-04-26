@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/context/AuthContext';
-import { useNotifications, Notification } from '@/hooks/use-notifications';
+import { useNotifications } from '@/hooks/use-notifications';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -31,16 +31,12 @@ export default function NotificationDropdown() {
   };
 
   // Handle notification click
-  const handleNotificationClick = (notification: Notification) => {
-    if (!notification.is_read) {
-      markAsRead(notification.id);
-    }
+  const handleNotificationClick = (notificationId: string) => {
+    markAsRead(notificationId);
     
     // Handle navigation based on notification type
-    if (notification.reference_type && notification.reference_id) {
-      // For demo, just close the dropdown
-      setIsOpen(false);
-    }
+    // For demo, just close the dropdown
+    setIsOpen(false);
   };
 
   if (!user) return null;
@@ -108,9 +104,9 @@ export default function NotificationDropdown() {
                 >
                   <DropdownMenuItem
                     className={`flex flex-col items-start p-3 cursor-pointer hover:bg-accent ${
-                      !notification.is_read ? 'bg-muted/50' : ''
+                      !notification.read ? 'bg-muted/50' : ''
                     }`}
-                    onClick={() => handleNotificationClick(notification)}
+                    onClick={() => handleNotificationClick(notification.id)}
                   >
                     <div className="flex justify-between w-full">
                       <span className="font-medium">{notification.title}</span>
@@ -121,7 +117,7 @@ export default function NotificationDropdown() {
                     <p className="text-sm text-muted-foreground mt-1">
                       {notification.message}
                     </p>
-                    {!notification.is_read && (
+                    {!notification.read && (
                       <div className="w-2 h-2 bg-primary rounded-full absolute right-4 top-3"></div>
                     )}
                   </DropdownMenuItem>
