@@ -4,10 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Github, Linkedin, Globe, Clock } from "lucide-react";
+import { Github, Linkedin, Globe, Clock, Loader2 } from "lucide-react";
 
 // UI Components
 import {
@@ -53,7 +52,7 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfileSetup() {
-  const { user } = useAuth();
+  const { user, updateUserProfile, userProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,10 +60,10 @@ export default function ProfileSetup() {
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      linkedin_url: "",
-      github_url: "",
-      portfolio_url: "",
-      availability: "not_available",
+      linkedin_url: userProfile?.linkedin_url || "",
+      github_url: userProfile?.github_url || "",
+      portfolio_url: userProfile?.portfolio_url || "",
+      availability: (userProfile?.availability as any) || "not_available",
     },
   });
 
@@ -81,27 +80,17 @@ export default function ProfileSetup() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          linkedin_url: data.linkedin_url,
-          github_url: data.github_url,
-          portfolio_url: data.portfolio_url || null,
-          availability: data.availability,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Profile created!",
-        description: "Welcome to NextUP. Your profile has been set up successfully.",
+      await updateUserProfile({
+        linkedin_url: data.linkedin_url,
+        github_url: data.github_url,
+        portfolio_url: data.portfolio_url || null,
+        availability: data.availability,
       });
 
       // Redirect to dashboard after successful setup
       navigate("/dashboard");
     } catch (error: any) {
+      console.error("Profile setup error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to create profile. Please try again.",
@@ -185,7 +174,11 @@ export default function ProfileSetup() {
                       <FormLabel className="flex items-center gap-2">
                         <Clock className="h-4 w-4" /> Availability
                       </FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select your availability" />
@@ -207,7 +200,14 @@ export default function ProfileSetup() {
                   className="w-full" 
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Saving..." : "Complete Setup"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Complete Setup"
+                  )}
                 </Button>
               </form>
             </Form>

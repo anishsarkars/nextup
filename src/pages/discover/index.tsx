@@ -1,8 +1,9 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery } from "@tanstack/react-query";
 import {
   Calendar,
   Filter,
@@ -11,118 +12,249 @@ import {
   Award,
   Clock,
   MapPin,
-  BookOpen
+  BookOpen,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
+import { CardItem } from "@/components/cards/card-item";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useSupabaseData } from "@/hooks/use-supabase-data";
 
-// Mock data
-const scholarships = [
-  {
-    id: 1,
-    title: "Google Women in Tech Scholarship",
-    provider: "Google",
-    amount: "$10,000",
-    deadline: "October 15, 2023",
-    tags: ["Tech", "Women", "STEM"],
-    image: "https://via.placeholder.com/40"
-  },
-  {
-    id: 2,
-    title: "AWS Cloud Computing Scholarship",
-    provider: "Amazon Web Services",
-    amount: "$5,000",
-    deadline: "November 30, 2023",
-    tags: ["Cloud", "Computing", "Technology"],
-    image: "https://via.placeholder.com/40"
-  },
-  {
-    id: 3,
-    title: "Global Undergraduate Exchange Program",
-    provider: "U.S. Department of State",
-    amount: "Fully Funded",
-    deadline: "December 1, 2023",
-    tags: ["Exchange", "Undergraduate", "International"],
-    image: "https://via.placeholder.com/40"
-  },
-  {
-    id: 4,
-    title: "Environmental Leadership Scholarship",
-    provider: "Green Future Foundation",
-    amount: "$7,500",
-    deadline: "January 15, 2024",
-    tags: ["Environment", "Leadership", "Sustainability"],
-    image: "https://via.placeholder.com/40"
-  },
-];
+// Types for data
+interface Scholarship {
+  id: string;
+  title: string;
+  provider: string;
+  amount: string;
+  deadline: string;
+  tags: string[];
+  description: string;
+}
 
-const events = [
-  {
-    id: 1,
-    title: "TechCrunch Disrupt 2023",
-    organizer: "TechCrunch",
-    date: "Sep 19-21, 2023",
-    location: "San Francisco, CA",
-    tags: ["Tech", "Startup", "Networking"],
-    image: "https://via.placeholder.com/40"
-  },
-  {
-    id: 2,
-    title: "NASA Space Apps Challenge",
-    organizer: "NASA",
-    date: "Oct 7-8, 2023",
-    location: "Worldwide",
-    tags: ["Space", "Hackathon", "Innovation"],
-    image: "https://via.placeholder.com/40"
-  },
-  {
-    id: 3,
-    title: "Women in Data Science Conference",
-    organizer: "Stanford University",
-    date: "Nov 12, 2023",
-    location: "Online",
-    tags: ["Data Science", "Women", "Conference"],
-    image: "https://via.placeholder.com/40"
-  },
-  {
-    id: 4,
-    title: "Design Systems London",
-    organizer: "Figma",
-    date: "Dec 5, 2023",
-    location: "London, UK",
-    tags: ["Design", "UX", "Systems"],
-    image: "https://via.placeholder.com/40"
-  },
-];
+interface Event {
+  id: string;
+  title: string;
+  organizer: string;
+  date: string;
+  location: string;
+  participants: number;
+  prize: string;
+  tags: string[];
+  description: string;
+}
 
 export default function Discover() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { fetchData, loading: bookmarkLoading } = useSupabaseData();
   const [activeTab, setActiveTab] = useState("scholarships");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
   
-  // Generic filter categories for both scholarships and events
+  // Fetch bookmarks if user is logged in
+  const { data: bookmarks = [], refetch: refetchBookmarks } = useQuery({
+    queryKey: ["bookmarks", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      try {
+        const { data } = await supabase
+          .from("bookmarks")
+          .select("item_id, item_type")
+          .eq("user_id", user.id);
+          
+        return data || [];
+      } catch (error) {
+        console.error("Error fetching bookmarks:", error);
+        return [];
+      }
+    },
+    enabled: !!user
+  });
+  
+  // Fetch scholarships
+  const { 
+    data: scholarships = [], 
+    isLoading: scholarshipsLoading,
+    refetch: refetchScholarships 
+  } = useQuery({
+    queryKey: ["scholarships", searchQuery, selectedFilters],
+    queryFn: async () => {
+      try {
+        let query = supabase.from("scholarships").select("*");
+        
+        if (searchQuery) {
+          query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+        }
+        
+        // Apply filters
+        if (selectedFilters.amount && selectedFilters.amount.length) {
+          query = query.in("amount_category", selectedFilters.amount);
+        }
+        
+        if (selectedFilters.deadline && selectedFilters.deadline.length) {
+          query = query.in("deadline_category", selectedFilters.deadline);
+        }
+        
+        if (selectedFilters.field && selectedFilters.field.length) {
+          // For tags we need a different approach since tags is an array
+          const tagConditions = selectedFilters.field.map(field => 
+            `tags.cs.{${field}}`
+          ).join(",");
+          query = query.or(tagConditions);
+        }
+        
+        const { data, error } = await query.order("created_at", { ascending: false });
+        
+        if (error) throw error;
+        
+        return data || [];
+      } catch (error) {
+        console.error("Error fetching scholarships:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load scholarships. Please try again.",
+          variant: "destructive"
+        });
+        return [];
+      }
+    }
+  });
+  
+  // Fetch events
+  const { 
+    data: events = [], 
+    isLoading: eventsLoading,
+    refetch: refetchEvents 
+  } = useQuery({
+    queryKey: ["events", searchQuery, selectedFilters],
+    queryFn: async () => {
+      try {
+        let query = supabase.from("events").select("*");
+        
+        if (searchQuery) {
+          query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+        }
+        
+        // Apply filters
+        if (selectedFilters.eventType && selectedFilters.eventType.length) {
+          query = query.in("event_type", selectedFilters.eventType);
+        }
+        
+        if (selectedFilters.date && selectedFilters.date.length) {
+          query = query.in("date_category", selectedFilters.date);
+        }
+        
+        if (selectedFilters.location && selectedFilters.location.length) {
+          query = query.in("location_type", selectedFilters.location);
+        }
+        
+        if (selectedFilters.field && selectedFilters.field.length) {
+          // For tags we need a different approach since tags is an array
+          const tagConditions = selectedFilters.field.map(field => 
+            `tags.cs.{${field}}`
+          ).join(",");
+          query = query.or(tagConditions);
+        }
+        
+        const { data, error } = await query.order("created_at", { ascending: false });
+        
+        if (error) throw error;
+        
+        return data || [];
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load events. Please try again.",
+          variant: "destructive"
+        });
+        return [];
+      }
+    },
+    enabled: activeTab === "events" // Only fetch events when on events tab
+  });
+  
+  // Filter categories for both scholarships and events
   const filterCategories = {
     scholarships: [
-      { name: "Amount", options: ["Under $1,000", "$1,000 - $5,000", "$5,000 - $10,000", "Over $10,000", "Fully Funded"] },
-      { name: "Deadline", options: ["This Week", "This Month", "Next 3 Months", "Future"] },
-      { name: "Field", options: ["STEM", "Arts", "Business", "Humanities", "Medicine", "Law"] },
-      { name: "Eligibility", options: ["Undergraduate", "Graduate", "PhD", "International", "Minority"] },
+      { name: "amount", label: "Amount", options: ["Under $1,000", "$1,000 - $5,000", "$5,000 - $10,000", "Over $10,000", "Fully Funded"] },
+      { name: "deadline", label: "Deadline", options: ["This Week", "This Month", "Next 3 Months", "Future"] },
+      { name: "field", label: "Field", options: ["STEM", "Arts", "Business", "Humanities", "Medicine", "Law"] },
+      { name: "eligibility", label: "Eligibility", options: ["Undergraduate", "Graduate", "PhD", "International", "Minority"] },
     ],
     events: [
-      { name: "Event Type", options: ["Conference", "Hackathon", "Workshop", "Competition", "Networking"] },
-      { name: "Date", options: ["This Week", "This Month", "Next 3 Months", "Future"] },
-      { name: "Location", options: ["Online", "In-person", "Hybrid"] },
-      { name: "Field", options: ["Tech", "Business", "Design", "Science", "Arts", "Engineering"] },
+      { name: "eventType", label: "Event Type", options: ["Conference", "Hackathon", "Workshop", "Competition", "Networking"] },
+      { name: "date", label: "Date", options: ["This Week", "This Month", "Next 3 Months", "Future"] },
+      { name: "location", label: "Location", options: ["Online", "In-person", "Hybrid"] },
+      { name: "field", label: "Field", options: ["Tech", "Business", "Design", "Science", "Arts", "Engineering"] },
     ]
   };
   
   // Filter based on active tab
   const currentFilters = filterCategories[activeTab as keyof typeof filterCategories];
   
+  // Handle filter change
+  const handleFilterChange = (category: string, option: string) => {
+    setSelectedFilters(prev => {
+      const current = prev[category] || [];
+      const updated = current.includes(option)
+        ? current.filter(item => item !== option)
+        : [...current, option];
+      
+      return {
+        ...prev,
+        [category]: updated
+      };
+    });
+  };
+  
+  // Check if an option is selected
+  const isOptionSelected = (category: string, option: string) => {
+    return selectedFilters[category]?.includes(option) || false;
+  };
+  
+  // Handle tab change
+  useEffect(() => {
+    // Reset filters when changing tabs
+    setSelectedFilters({});
+  }, [activeTab]);
+  
+  // Apply filters
+  const applyFilters = () => {
+    if (activeTab === "scholarships") {
+      refetchScholarships();
+    } else {
+      refetchEvents();
+    }
+    setShowFilters(false);
+  };
+  
+  // Reset filters
+  const resetFilters = () => {
+    setSelectedFilters({});
+    setSearchQuery("");
+  };
+  
+  // Check if an item is bookmarked
+  const isItemBookmarked = (id: string, type: string) => {
+    return bookmarks.some(bookmark => 
+      bookmark.item_id === id && bookmark.item_type === type
+    );
+  };
+  
+  // Loading states
+  const isLoading = activeTab === "scholarships" ? scholarshipsLoading : eventsLoading;
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-24">
       <div className="space-y-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold">Discover Opportunities</h1>
@@ -139,6 +271,15 @@ export default function Discover() {
               className="pl-10 transition-soft"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (activeTab === "scholarships") {
+                    refetchScholarships();
+                  } else {
+                    refetchEvents();
+                  }
+                }
+              }}
             />
           </div>
           <Button
@@ -151,32 +292,49 @@ export default function Discover() {
           </Button>
         </div>
 
-        {showFilters && (
-          <div className="bg-card rounded-lg p-6 border shadow-sm animate-fade-in">
-            <h3 className="font-medium mb-4">Filter Results</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {currentFilters.map((category, idx) => (
-                <div key={idx} className="space-y-3">
-                  <h4 className="text-sm font-medium">{category.name}</h4>
-                  {category.options.map((option, i) => (
-                    <div key={i} className="flex items-center space-x-2">
-                      <Checkbox id={`${category.name}-${i}`} />
-                      <Label htmlFor={`${category.name}-${i}`} className="text-sm">
-                        {option}
-                      </Label>
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-card rounded-lg p-6 border shadow-sm">
+                <h3 className="font-medium mb-4">Filter Results</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {currentFilters.map((category, idx) => (
+                    <div key={idx} className="space-y-3">
+                      <h4 className="text-sm font-medium">{category.label}</h4>
+                      {category.options.map((option, i) => (
+                        <div key={i} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`${category.name}-${i}`} 
+                            checked={isOptionSelected(category.name, option)}
+                            onCheckedChange={() => handleFilterChange(category.name, option)}
+                          />
+                          <Label htmlFor={`${category.name}-${i}`} className="text-sm">
+                            {option}
+                          </Label>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
-              ))}
-            </div>
-            <div className="flex justify-end mt-6 space-x-2">
-              <Button variant="outline" size="sm" onClick={() => setShowFilters(false)}>
-                Cancel
-              </Button>
-              <Button size="sm">Apply Filters</Button>
-            </div>
-          </div>
-        )}
+                <div className="flex justify-end mt-6 space-x-2">
+                  <Button variant="outline" size="sm" onClick={resetFilters}>
+                    Reset
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowFilters(false)}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={applyFilters}>Apply Filters</Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         <Tabs defaultValue="scholarships" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="mb-6">
@@ -190,80 +348,130 @@ export default function Discover() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="scholarships" className="animate-fade-in">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {scholarships.map((scholarship) => (
-                <div
-                  key={scholarship.id}
-                  className="bg-card rounded-xl border p-6 hover:shadow-md transition-soft animate-on-load animate-scale-up"
-                >
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-pastel-blue flex-shrink-0 flex items-center justify-center">
-                      <GraduationCap className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{scholarship.title}</h3>
-                      <p className="text-sm text-muted-foreground">{scholarship.provider}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center text-sm">
-                      <Award className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span>{scholarship.amount}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span>Deadline: {scholarship.deadline}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {scholarship.tags.map((tag, i) => (
-                        <Badge key={i} variant="outline" className="bg-pastel-blue/20">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    <Button className="w-full mt-4 transition-soft">View Details</Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : scholarships.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {scholarships.map((scholarship) => (
+                  <CardItem
+                    key={scholarship.id}
+                    id={scholarship.id}
+                    type="scholarship"
+                    title={scholarship.title}
+                    description={scholarship.description || "No description available"}
+                    tags={scholarship.tags || []}
+                    bookmarked={isItemBookmarked(scholarship.id, "scholarship")}
+                    detailsUrl={`/scholarship/${scholarship.id}`}
+                    metadata={[
+                      { 
+                        icon: <Award className="h-4 w-4 text-muted-foreground" />,
+                        value: scholarship.amount
+                      },
+                      {
+                        icon: <Clock className="h-4 w-4 text-muted-foreground" />,
+                        value: `Deadline: ${scholarship.deadline}`
+                      },
+                    ]}
+                    actionLabel="Apply Now"
+                    onAction={() => {
+                      // Handle scholarship application
+                      if (!user) {
+                        toast({
+                          title: "Authentication required",
+                          description: "Please sign in to apply for scholarships",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+                      
+                      // For this example, just show a toast
+                      toast({
+                        title: "Application initiated",
+                        description: `You're applying for ${scholarship.title}`,
+                      });
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
+                <h3 className="mt-4 text-lg font-medium">No scholarships found</h3>
+                <p className="text-muted-foreground mt-2">
+                  Try adjusting your filters or search terms
+                </p>
+                {Object.keys(selectedFilters).length > 0 && (
+                  <Button variant="outline" className="mt-4" onClick={resetFilters}>
+                    Reset Filters
+                  </Button>
+                )}
+              </div>
+            )}
           </TabsContent>
           <TabsContent value="events" className="animate-fade-in">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map((event) => (
-                <div
-                  key={event.id}
-                  className="bg-card rounded-xl border p-6 hover:shadow-md transition-soft animate-on-load animate-scale-up"
-                >
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-pastel-purple flex-shrink-0 flex items-center justify-center">
-                      <Calendar className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{event.title}</h3>
-                      <p className="text-sm text-muted-foreground">{event.organizer}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center text-sm">
-                      <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span>{event.date}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span>{event.location}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {event.tags.map((tag, i) => (
-                        <Badge key={i} variant="outline" className="bg-pastel-purple/20">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    <Button className="w-full mt-4 transition-soft">View Details</Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : events.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {events.map((event) => (
+                  <CardItem
+                    key={event.id}
+                    id={event.id}
+                    type="event"
+                    title={event.title}
+                    description={event.description || "No description available"}
+                    tags={event.tags || []}
+                    bookmarked={isItemBookmarked(event.id, "event")}
+                    detailsUrl={`/event/${event.id}`}
+                    metadata={[
+                      {
+                        icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
+                        value: event.date
+                      },
+                      {
+                        icon: <MapPin className="h-4 w-4 text-muted-foreground" />,
+                        value: event.location
+                      },
+                    ]}
+                    actionLabel="Register"
+                    onAction={() => {
+                      // Handle event registration
+                      if (!user) {
+                        toast({
+                          title: "Authentication required",
+                          description: "Please sign in to register for events",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+                      
+                      // For this example, just show a toast
+                      toast({
+                        title: "Registration initiated",
+                        description: `You're registering for ${event.title}`,
+                      });
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Calendar className="h-12 w-12 mx-auto text-muted-foreground opacity-20" />
+                <h3 className="mt-4 text-lg font-medium">No events found</h3>
+                <p className="text-muted-foreground mt-2">
+                  Try adjusting your filters or search terms
+                </p>
+                {Object.keys(selectedFilters).length > 0 && (
+                  <Button variant="outline" className="mt-4" onClick={resetFilters}>
+                    Reset Filters
+                  </Button>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
         

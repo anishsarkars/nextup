@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./hooks/use-theme";
 import { ProtectedRoute } from "./components/auth/protected-route";
 import Layout from "./components/layout/layout";
 import AuthLayout from "./components/layout/auth-layout";
@@ -23,41 +24,43 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            {/* Public routes */}
-            <Route element={<Layout />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/discover" element={<Discover />} />
-              <Route path="/collaborate" element={<Collaborate />} />
-              <Route path="/skillswap" element={<SkillSwap />} />
-            </Route>
-            
-            {/* Auth routes */}
-            <Route element={<AuthLayout children={undefined} />}>
-              <Route path="/auth/login" element={<Login />} />
-              <Route path="/auth/signup" element={<SignUp />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-            </Route>
-            
-            {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
+    <ThemeProvider defaultTheme="light">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              {/* Public routes */}
               <Route element={<Layout />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/profile-setup" element={<ProfileSetup />} />
+                <Route path="/" element={<Index />} />
+                <Route path="/discover" element={<Discover />} />
+                <Route path="/collaborate" element={<Collaborate />} />
+                <Route path="/skillswap" element={<SkillSwap />} />
               </Route>
-            </Route>
-            
-            {/* 404 fallback */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+              
+              {/* Auth routes */}
+              <Route element={<AuthLayout children={undefined} />}>
+                <Route path="/auth/login" element={<Login />} />
+                <Route path="/auth/signup" element={<SignUp />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+              </Route>
+              
+              {/* Protected routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route element={<Layout />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/profile-setup" element={<ProfileSetup />} />
+                </Route>
+              </Route>
+              
+              {/* 404 fallback */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
