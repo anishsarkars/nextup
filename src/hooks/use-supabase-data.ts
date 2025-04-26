@@ -1,11 +1,23 @@
-
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 export function useSupabaseData() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Check if Supabase is configured before making requests
+  const checkSupabaseConfig = () => {
+    if (!isSupabaseConfigured()) {
+      toast({
+        title: "Supabase not configured",
+        description: "Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    return true;
+  };
 
   // Generic function to fetch data with pagination
   async function fetchData<T>(
@@ -31,6 +43,11 @@ export function useSupabaseData() {
     } = options;
     
     setLoading(true);
+    
+    // Check Supabase configuration
+    if (!checkSupabaseConfig()) {
+      return { data: null, count: 0, error: "Supabase not configured" };
+    }
     
     try {
       // Start building the query
@@ -72,13 +89,20 @@ export function useSupabaseData() {
       // Execute query
       const { data, error, count } = await query;
       
+      if (error) throw error;
+      
       return { 
         data: data as T[] | null, 
         count: count || 0,
-        error 
+        error: null
       };
     } catch (error) {
       console.error(`Error fetching data from ${table}:`, error);
+      toast({
+        title: `Error fetching ${table}`,
+        description: error.message || "Failed to load data. Please try again.",
+        variant: "destructive"
+      });
       return { data: null, count: 0, error };
     } finally {
       setLoading(false);

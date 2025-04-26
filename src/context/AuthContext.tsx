@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
@@ -42,11 +42,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Check if Supabase is configured
+  const supabaseConfigured = isSupabaseConfigured();
+
   // Check if user profile is complete
   const profileComplete = !!userProfile && !!userProfile.linkedin_url && !!userProfile.github_url;
 
   // Fetch user profile
   const fetchUserProfile = async (userId: string) => {
+    if (!supabaseConfigured) {
+      console.warn("Supabase not configured. Skipping profile fetch.");
+      return null;
+    }
+    
     setProfileLoading(true);
     try {
       const { data, error } = await supabase
@@ -80,6 +88,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Update user profile
   const updateUserProfile = async (profile: Partial<UserProfile>) => {
+    if (!supabaseConfigured) {
+      toast({
+        title: "Supabase not configured",
+        description: "Cannot update profile without proper Supabase configuration.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (!user) {
       toast({
         title: "Authentication error",
@@ -123,6 +140,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    // Initialize auth only if Supabase is configured
+    if (!supabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+    
     // Get initial session
     const getInitialSession = async () => {
       try {
@@ -181,9 +204,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, supabaseConfigured]);
 
   const signIn = async (provider: 'github' | 'google') => {
+    if (!supabaseConfigured) {
+      toast({
+        title: "Supabase not configured",
+        description: "Authentication requires Supabase configuration.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       setLoading(true);
       const { error } = await supabase.auth.signInWithOAuth({ 
@@ -206,6 +238,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signInWithEmail = async (email: string, password: string) => {
+    if (!supabaseConfigured) {
+      toast({
+        title: "Supabase not configured",
+        description: "Authentication requires Supabase configuration.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       setLoading(true);
       const { error } = await supabase.auth.signInWithPassword({
@@ -226,6 +267,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string) => {
+    if (!supabaseConfigured) {
+      toast({
+        title: "Supabase not configured",
+        description: "Authentication requires Supabase configuration.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       setLoading(true);
       const { error } = await supabase.auth.signUp({
@@ -254,6 +304,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    if (!supabaseConfigured) {
+      return;
+    }
+    
     try {
       setLoading(true);
       const { error } = await supabase.auth.signOut();

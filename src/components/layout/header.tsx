@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -58,7 +57,6 @@ export function Header() {
               alt="NextUP Logo" 
               className="h-8" 
             />
-            <span className="text-sm text-muted-foreground hidden sm:inline-block">Designed @ Anish</span>
           </Link>
           
           {/* Desktop Navigation */}
