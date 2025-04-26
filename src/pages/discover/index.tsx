@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,25 +11,14 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
   Filter,
-  Bookmark,
-  Clock,
-  Calendar,
-  Link as LinkIcon,
   Search,
   Loader2,
-  RefreshCw
+  Calendar,
+  Link as LinkIcon,
+  Clock,
 } from "lucide-react";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured, getMockData } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ErrorFallback } from "@/components/ui/error-fallback";
@@ -79,7 +67,17 @@ export default function Discover() {
     queryKey: ["scholarships", searchQuery, category],
     queryFn: async () => {
       if (!supabaseConfigured) {
-        return [];
+        const mockData = getMockData('scholarships');
+        return mockData.filter(item => {
+          if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
+              !item.description.toLowerCase().includes(searchQuery.toLowerCase())) {
+            return false;
+          }
+          if (category && category !== "all" && !item.tags.includes(category)) {
+            return false;
+          }
+          return true;
+        });
       }
 
       try {
@@ -102,7 +100,6 @@ export default function Discover() {
         throw error;
       }
     },
-    enabled: supabaseConfigured,
   });
 
   // Fetch hackathons
@@ -115,7 +112,14 @@ export default function Discover() {
     queryKey: ["hackathons", searchQuery],
     queryFn: async () => {
       if (!supabaseConfigured) {
-        return [];
+        const mockData = getMockData('hackathons');
+        if (searchQuery) {
+          return mockData.filter(item => 
+            item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            item.description.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        }
+        return mockData;
       }
 
       try {
@@ -134,7 +138,6 @@ export default function Discover() {
         throw error;
       }
     },
-    enabled: supabaseConfigured,
   });
 
   // Handle bookmark toggling
@@ -150,9 +153,8 @@ export default function Discover() {
 
     if (!supabaseConfigured) {
       toast({
-        title: "Supabase not configured",
-        description: "Bookmarking requires Supabase configuration.",
-        variant: "destructive",
+        title: "Demo Mode",
+        description: "Bookmarking is available after connecting to Supabase",
       });
       return;
     }
@@ -252,11 +254,13 @@ export default function Discover() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="undergraduate">Undergraduate</SelectItem>
-                  <SelectItem value="graduate">Graduate</SelectItem>
-                  <SelectItem value="research">Research</SelectItem>
-                  <SelectItem value="international">International</SelectItem>
-                  <SelectItem value="minority">Minority</SelectItem>
+                  <SelectItem value="Undergraduate">Undergraduate</SelectItem>
+                  <SelectItem value="Graduate">Graduate</SelectItem>
+                  <SelectItem value="Research">Research</SelectItem>
+                  <SelectItem value="International">International</SelectItem>
+                  <SelectItem value="Minority">Minority</SelectItem>
+                  <SelectItem value="STEM">STEM</SelectItem>
+                  <SelectItem value="Merit-based">Merit-based</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -274,12 +278,7 @@ export default function Discover() {
           </TabsList>
 
           <TabsContent value="scholarships" className="animate-fade-in">
-            {!supabaseConfigured ? (
-              <ErrorFallback
-                title="Supabase Not Configured"
-                message="Scholarship data requires a Supabase connection. Please set up your environment variables."
-              />
-            ) : scholarshipsLoading ? (
+            {scholarshipsLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
@@ -317,7 +316,6 @@ export default function Discover() {
                     ]}
                     actionLabel="View Details"
                     detailsUrl={scholarship.link}
-                    onBookmark={() => handleBookmark(scholarship.id, "scholarship")}
                   />
                 ))}
               </div>
@@ -325,12 +323,7 @@ export default function Discover() {
           </TabsContent>
 
           <TabsContent value="hackathons" className="animate-fade-in">
-            {!supabaseConfigured ? (
-              <ErrorFallback
-                title="Supabase Not Configured"
-                message="Hackathon data requires a Supabase connection. Please set up your environment variables."
-              />
-            ) : hackathonsLoading ? (
+            {hackathonsLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
@@ -372,7 +365,6 @@ export default function Discover() {
                     ]}
                     actionLabel="Register Now"
                     detailsUrl={hackathon.link}
-                    onBookmark={() => handleBookmark(hackathon.id, "hackathon")}
                   />
                 ))}
               </div>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { FormWizard } from "@/components/forms/form-wizard";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
   Form,
   FormControl,
@@ -55,6 +54,7 @@ export default function PostGigModal({ isOpen, onClose }: PostGigModalProps) {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentTag, setCurrentTag] = useState("");
+  const supabaseConfigured = isSupabaseConfigured();
   
   const form = useForm<GigFormValues>({
     resolver: zodResolver(gigSchema),
@@ -349,6 +349,22 @@ export default function PostGigModal({ isOpen, onClose }: PostGigModalProps) {
     try {
       const values = form.getValues();
       
+      if (!supabaseConfigured) {
+        // Handle demo mode
+        setTimeout(() => {
+          toast({
+            title: "Gig posted!",
+            description: "Your gig has been published in demo mode. In a production environment, this would be saved to Supabase.",
+          });
+          
+          // Reset form and close modal
+          form.reset();
+          setIsSubmitting(false);
+          onClose();
+        }, 1000);
+        return;
+      }
+      
       const { error } = await supabase
         .from("gigs")
         .insert({
@@ -371,7 +387,7 @@ export default function PostGigModal({ isOpen, onClose }: PostGigModalProps) {
         description: "Your gig has been published successfully.",
       });
       
-      // Reset form and close modal
+      // Reset form
       form.reset();
       
       // Invalidate gigs query to refetch latest data
@@ -406,6 +422,12 @@ export default function PostGigModal({ isOpen, onClose }: PostGigModalProps) {
               isSubmitting={isSubmitting}
               submitButtonText="Post Gig"
             />
+            
+            {!supabaseConfigured && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Running in demo mode. Gig data won't be permanently stored.
+              </p>
+            )}
           </form>
         </Form>
       </DialogContent>

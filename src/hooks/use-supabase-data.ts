@@ -1,23 +1,10 @@
 import { useState } from 'react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, getMockData } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 export function useSupabaseData() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  // Check if Supabase is configured before making requests
-  const checkSupabaseConfig = () => {
-    if (!isSupabaseConfigured()) {
-      toast({
-        title: "Supabase not configured",
-        description: "Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
-        variant: "destructive"
-      });
-      return false;
-    }
-    return true;
-  };
 
   // Generic function to fetch data with pagination
   async function fetchData<T>(
@@ -45,8 +32,61 @@ export function useSupabaseData() {
     setLoading(true);
     
     // Check Supabase configuration
-    if (!checkSupabaseConfig()) {
-      return { data: null, count: 0, error: "Supabase not configured" };
+    if (!isSupabaseConfigured()) {
+      // Return mock data based on table name
+      const mockData = getMockData(table, perPage);
+      
+      // Apply simple filtering to mock data if needed
+      let filteredData = [...mockData];
+      
+      // Apply basic search if provided
+      if (searchColumn && searchQuery) {
+        filteredData = filteredData.filter(item => {
+          const value = item[searchColumn]?.toString().toLowerCase();
+          return value?.includes(searchQuery.toLowerCase());
+        });
+      }
+      
+      // Apply filters
+      if (Object.keys(filters).length > 0) {
+        filteredData = filteredData.filter(item => {
+          return Object.entries(filters).every(([key, value]) => {
+            if (value === undefined || value === null || value === '') return true;
+            
+            if (Array.isArray(value)) {
+              return value.every(v => item[key]?.includes(v));
+            } else {
+              return item[key] === value;
+            }
+          });
+        });
+      }
+      
+      // Apply sorting
+      if (orderBy) {
+        filteredData.sort((a, b) => {
+          if (a[orderBy.column] < b[orderBy.column]) return orderBy.ascending ? -1 : 1;
+          if (a[orderBy.column] > b[orderBy.column]) return orderBy.ascending ? 1 : -1;
+          return 0;
+        });
+      }
+      
+      // Apply pagination
+      const startIndex = (page - 1) * perPage;
+      const endIndex = startIndex + perPage;
+      const paginatedData = filteredData.slice(startIndex, endIndex);
+      
+      // Simulate delay for loading state
+      return new Promise(resolve => {
+        setTimeout(() => {
+          setLoading(false);
+          resolve({ 
+            data: paginatedData as T[],
+            count: filteredData.length,
+            error: null
+          });
+        }, 500);
+      });
     }
     
     try {
@@ -116,6 +156,19 @@ export function useSupabaseData() {
   ): Promise<{ data: T | null; error: any }> {
     setLoading(true);
     
+    if (!isSupabaseConfigured()) {
+      // Return mock response in demo mode
+      return new Promise(resolve => {
+        setTimeout(() => {
+          setLoading(false);
+          resolve({ 
+            data: { id: `mock-${Date.now()}`, ...data } as unknown as T,
+            error: null
+          });
+        }, 500);
+      });
+    }
+    
     try {
       const { data: insertedData, error } = await supabase
         .from(table)
@@ -146,6 +199,19 @@ export function useSupabaseData() {
     data: Record<string, any>
   ): Promise<{ data: T | null; error: any }> {
     setLoading(true);
+    
+    if (!isSupabaseConfigured()) {
+      // Return mock response in demo mode
+      return new Promise(resolve => {
+        setTimeout(() => {
+          setLoading(false);
+          resolve({ 
+            data: { id, ...data } as unknown as T,
+            error: null
+          });
+        }, 500);
+      });
+    }
     
     try {
       const { data: updatedData, error } = await supabase
@@ -178,6 +244,19 @@ export function useSupabaseData() {
   ): Promise<{ success: boolean; error: any }> {
     setLoading(true);
     
+    if (!isSupabaseConfigured()) {
+      // Return mock response in demo mode
+      return new Promise(resolve => {
+        setTimeout(() => {
+          setLoading(false);
+          resolve({ 
+            success: true,
+            error: null
+          });
+        }, 500);
+      });
+    }
+    
     try {
       const { error } = await supabase
         .from(table)
@@ -207,6 +286,19 @@ export function useSupabaseData() {
     userId: string
   ): Promise<{ bookmarked: boolean; error: any }> {
     setLoading(true);
+    
+    if (!isSupabaseConfigured()) {
+      // Return mock response in demo mode
+      return new Promise(resolve => {
+        setTimeout(() => {
+          setLoading(false);
+          resolve({ 
+            bookmarked: true,
+            error: null
+          });
+        }, 500);
+      });
+    }
     
     try {
       // Check if bookmark exists
@@ -276,7 +368,7 @@ export function useSupabaseData() {
     itemId: string,
     userId: string
   ): Promise<boolean> {
-    if (!userId) return false;
+    if (!userId || !isSupabaseConfigured()) return false;
     
     try {
       const { data, error } = await supabase
@@ -303,6 +395,19 @@ export function useSupabaseData() {
     itemType?: 'project' | 'scholarship' | 'event' | 'gig' | 'hackathon'
   ): Promise<{ data: any[]; error: any }> {
     setLoading(true);
+    
+    if (!isSupabaseConfigured()) {
+      // Return mock response in demo mode with empty bookmarks
+      return new Promise(resolve => {
+        setTimeout(() => {
+          setLoading(false);
+          resolve({ 
+            data: [],
+            error: null
+          });
+        }, 500);
+      });
+    }
     
     try {
       let query = supabase

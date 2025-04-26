@@ -58,9 +58,9 @@ const App = () => {
             <div className="fixed top-4 right-4 z-50 w-96 max-w-[90vw]">
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Supabase Configuration Missing</AlertTitle>
+                <AlertTitle>Demo Mode Active</AlertTitle>
                 <AlertDescription>
-                  Your app is running with placeholder Supabase credentials. Please set the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables for full functionality.
+                  The app is running with demo data. For a full experience, connect Supabase by setting the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.
                 </AlertDescription>
               </Alert>
             </div>

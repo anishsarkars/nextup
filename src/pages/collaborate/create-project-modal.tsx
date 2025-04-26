@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   Select, 
@@ -24,7 +24,7 @@ import { MultiSelector } from "@/components/ui/multi-selector";
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProjectCreated?: () => void; // Make this optional to maintain compatibility
+  onProjectCreated?: () => void;
 }
 
 const projectSchema = z.object({
@@ -46,6 +46,7 @@ export default function CreateProjectModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const supabaseConfigured = isSupabaseConfigured();
   
   const { register, handleSubmit, formState: { errors }, control, reset } = useForm<ProjectSchemaType>({
     resolver: zodResolver(projectSchema),
@@ -80,6 +81,23 @@ export default function CreateProjectModal({
     setIsLoading(true);
 
     try {
+      if (!supabaseConfigured) {
+        // Handle demo mode
+        setTimeout(() => {
+          toast({
+            title: "Demo Mode",
+            description: "Project created successfully in demo mode! In a production environment, this would be saved to Supabase.",
+          });
+          
+          // Reset form and close modal
+          reset();
+          setIsLoading(false);
+          onProjectCreated?.();
+          onClose();
+        }, 1000);
+        return;
+      }
+
       const { error } = await supabase.from("projects").insert({
         ...data,
         owner_id: user.id,
@@ -100,6 +118,8 @@ export default function CreateProjectModal({
       
       // Reset the form
       reset();
+      onProjectCreated?.();
+      onClose();
     } catch (error: any) {
       console.error("Error creating project:", error);
       toast({
@@ -107,11 +127,7 @@ export default function CreateProjectModal({
         description: error.message || "Failed to create project",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
-      // Optional chaining to handle potential undefined onProjectCreated
-      onProjectCreated?.();
-      onClose();
     }
   };
 
@@ -142,32 +158,28 @@ export default function CreateProjectModal({
           </div>
           <div className="grid gap-2">
             <label htmlFor="category">Category</label>
-            <div>
-              <Select
-                onValueChange={(value) => {
-                  // Find the right form field and set its value
-                  const field = document.querySelector(`input[name="category"]`);
-                  if (field) {
-                    (field as HTMLInputElement).value = value;
-                    // Trigger a change event
-                    const event = new Event('input', { bubbles: true });
-                    field.dispatchEvent(event);
-                  }
-                }}
-                defaultValue="">
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <input type="hidden" {...register("category")} />
-            </div>
+            <Select
+              onValueChange={(value) => {
+                const field = document.querySelector(`input[name="category"]`);
+                if (field) {
+                  (field as HTMLInputElement).value = value;
+                  const event = new Event('input', { bubbles: true });
+                  field.dispatchEvent(event);
+                }
+              }}
+              defaultValue="">
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <input type="hidden" {...register("category")} />
             {errors.category && (
               <p className="text-sm text-red-500">{errors.category.message}</p>
             )}
@@ -211,6 +223,11 @@ export default function CreateProjectModal({
           <Button type="submit" disabled={isLoading}>
             {isLoading ? "Creating..." : "Create Project"}
           </Button>
+          {!supabaseConfigured && (
+            <p className="text-xs text-muted-foreground text-center">
+              Running in demo mode. Project data won't be permanently stored.
+            </p>
+          )}
         </form>
       </DialogContent>
     </Dialog>
