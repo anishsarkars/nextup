@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,88 +11,64 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useNotifications } from '@/hooks/use-notifications';
+import { useAuth } from '@/context/AuthContext';
+import { useNotifications, Notification } from '@/hooks/use-notifications';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function NotificationDropdown() {
-  const { 
-    notifications, 
-    unreadCount, 
-    loading, 
-    fetchNotifications, 
-    markAsRead, 
-    markAllAsRead 
-  } = useNotifications();
+  const { user } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, loading } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Refresh notifications when dropdown opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotifications();
-    }
-  }, [isOpen, fetchNotifications]);
-  
-  // Format notification time
-  const formatTime = (timestamp: string) => {
+
+  // Format the date to be more readable
+  const formatNotificationDate = (date: string) => {
     try {
-      const date = new Date(timestamp);
-      return format(date, 'MMM d, h:mm a');
-    } catch (error) {
-      return 'Unknown time';
+      return formatDistanceToNow(new Date(date), { addSuffix: true });
+    } catch (e) {
+      return 'recently';
     }
   };
-  
-  // Get icon based on notification type
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'project_invite':
-        return '👥';
-      case 'team_join':
-        return '🤝';
-      case 'message':
-        return '💬';
-      case 'reminder':
-        return '⏰';
-      default:
-        return '🔔';
-    }
-  };
-  
+
   // Handle notification click
-  const handleNotificationClick = async (id: string) => {
-    await markAsRead(id);
+  const handleNotificationClick = (notification: Notification) => {
+    if (!notification.is_read) {
+      markAsRead(notification.id);
+    }
+    
+    // Handle navigation based on notification type
+    if (notification.reference_type && notification.reference_id) {
+      // For demo, just close the dropdown
+      setIsOpen(false);
+    }
   };
-  
+
+  if (!user) return null;
+
   return (
-    <DropdownMenu onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+          <Bell className="h-[1.2rem] w-[1.2rem]" />
           {unreadCount > 0 && (
             <motion.span 
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
+              className="absolute top-1 right-1 h-4 w-4 rounded-full bg-destructive flex items-center justify-center text-[10px] text-white"
             >
-              {unreadCount}
+              {unreadCount > 9 ? '9+' : unreadCount}
             </motion.span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80" align="end">
-        <DropdownMenuLabel className="flex items-center justify-between">
+      <DropdownMenuContent align="end" className="w-[340px] max-h-[80vh] overflow-auto">
+        <DropdownMenuLabel className="flex justify-between items-center">
           <span>Notifications</span>
           {notifications.length > 0 && (
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={(e) => {
-                e.preventDefault();
-                markAllAsRead();
-              }}
+              onClick={markAllAsRead} 
               className="text-xs h-7"
             >
               Mark all as read
@@ -100,59 +76,63 @@ export default function NotificationDropdown() {
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        
-        <div className="max-h-80 overflow-y-auto">
-          <DropdownMenuGroup>
+        <DropdownMenuGroup>
+          <AnimatePresence>
             {loading ? (
-              // Loading skeleton
-              Array(3).fill(0).map((_, i) => (
-                <DropdownMenuItem key={i} className="flex-col items-start p-3 cursor-default">
-                  <div className="flex items-center w-full mb-2">
-                    <Skeleton className="h-6 w-6 rounded-full mr-2" />
-                    <Skeleton className="h-4 w-32" />
-                  </div>
-                  <Skeleton className="h-3 w-full my-1" />
-                  <Skeleton className="h-3 w-2/3 my-1" />
-                </DropdownMenuItem>
-              ))
-            ) : notifications.length > 0 ? (
-              <AnimatePresence>
-                {notifications.map((notification) => (
-                  <motion.div
-                    key={notification.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <DropdownMenuItem 
-                      className={cn(
-                        "flex-col items-start p-3 cursor-pointer",
-                        notification.read ? "bg-background" : "bg-muted"
-                      )}
-                      onClick={() => handleNotificationClick(notification.id)}
-                    >
-                      <div className="flex items-center w-full">
-                        <span className="text-lg mr-2">{getNotificationIcon(notification.type)}</span>
-                        <span className="font-medium flex-1">{notification.title}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {notification.message}
-                      </p>
-                      <span className="text-xs text-muted-foreground mt-2">
-                        {formatTime(notification.created_at)}
-                      </span>
-                    </DropdownMenuItem>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+              <DropdownMenuItem className="flex justify-center items-center h-32 cursor-default">
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="animate-pulse text-muted-foreground text-sm"
+                >
+                  Loading notifications...
+                </motion.div>
+              </DropdownMenuItem>
+            ) : notifications.length === 0 ? (
+              <DropdownMenuItem className="flex justify-center items-center h-32 cursor-default">
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-muted-foreground text-sm"
+                >
+                  No notifications yet
+                </motion.div>
+              </DropdownMenuItem>
             ) : (
-              <div className="py-6 text-center text-muted-foreground">
-                <p>No notifications yet</p>
-              </div>
+              notifications.map((notification) => (
+                <motion.div
+                  key={notification.id}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <DropdownMenuItem
+                    className={`flex flex-col items-start p-3 cursor-pointer hover:bg-accent ${
+                      !notification.is_read ? 'bg-muted/50' : ''
+                    }`}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex justify-between w-full">
+                      <span className="font-medium">{notification.title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatNotificationDate(notification.created_at)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {notification.message}
+                    </p>
+                    {!notification.is_read && (
+                      <div className="w-2 h-2 bg-primary rounded-full absolute right-4 top-3"></div>
+                    )}
+                  </DropdownMenuItem>
+                  {notifications.indexOf(notification) < notifications.length - 1 && (
+                    <DropdownMenuSeparator />
+                  )}
+                </motion.div>
+              ))
             )}
-          </DropdownMenuGroup>
-        </div>
+          </AnimatePresence>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

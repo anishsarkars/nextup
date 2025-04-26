@@ -20,7 +20,15 @@ import SkillSwap from "./pages/skillswap";
 import Dashboard from "./pages/dashboard";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -40,7 +48,7 @@ const App = () => (
               </Route>
               
               {/* Auth routes */}
-              <Route element={<AuthLayout children={undefined} />}>
+              <Route element={<AuthLayout />}>
                 <Route path="/auth/login" element={<Login />} />
                 <Route path="/auth/signup" element={<SignUp />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />

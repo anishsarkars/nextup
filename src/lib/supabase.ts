@@ -1,18 +1,23 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Use default placeholder values for development
-// In production, these should be set in your environment
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+// Get environment variables with proper fallbacks
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Log a warning if we're using placeholder values
-if (supabaseUrl === 'https://placeholder-project.supabase.co' || 
-    supabaseAnonKey === 'placeholder-anon-key') {
-  console.warn('Using placeholder Supabase credentials. Please set up your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error(
+    'Missing Supabase credentials. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.'
+  );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
 
 // Helper function to get the current session
 export const getSession = async () => {

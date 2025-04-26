@@ -1,13 +1,9 @@
 
-import { ReactNode } from "react";
+import { Outlet } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
-interface AuthLayoutProps {
-  children: ReactNode;
-}
-
-export default function AuthLayout({ children }: AuthLayoutProps) {
+export default function AuthLayout() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="py-6 border-b">
@@ -18,6 +14,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               alt="NextUP Logo" 
               className="h-8"
             />
+            <span className="text-sm text-muted-foreground">Designed @ Anish</span>
           </Link>
         </div>
       </header>
@@ -28,7 +25,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          {children}
+          <Outlet />
         </motion.div>
       </main>
       <footer className="py-6 text-center text-sm text-muted-foreground">

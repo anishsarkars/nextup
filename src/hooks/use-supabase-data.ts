@@ -1,10 +1,11 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 export function useSupabaseData() {
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   // Generic function to fetch data with pagination
   async function fetchData<T>(
@@ -16,6 +17,7 @@ export function useSupabaseData() {
       orderBy?: { column: string; ascending?: boolean };
       searchColumn?: string;
       searchQuery?: string;
+      select?: string;
     } = {}
   ): Promise<{ data: T[] | null; count: number; error: any }> {
     const { 
@@ -24,7 +26,8 @@ export function useSupabaseData() {
       filters = {},
       orderBy,
       searchColumn,
-      searchQuery
+      searchQuery,
+      select = '*'
     } = options;
     
     setLoading(true);
@@ -33,12 +36,16 @@ export function useSupabaseData() {
       // Start building the query
       let query = supabase
         .from(table)
-        .select('*', { count: 'exact' });
+        .select(select, { count: 'exact' });
       
       // Add filters
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
-          query = query.eq(key, value);
+          if (Array.isArray(value)) {
+            query = query.contains(key, value);
+          } else {
+            query = query.eq(key, value);
+          }
         }
       });
       
@@ -57,7 +64,10 @@ export function useSupabaseData() {
       // Add pagination
       const from = (page - 1) * perPage;
       const to = from + perPage - 1;
-      query = query.range(from, to);
+      
+      if (perPage > 0) {
+        query = query.range(from, to);
+      }
       
       // Execute query
       const { data, error, count } = await query;
@@ -92,7 +102,7 @@ export function useSupabaseData() {
       if (error) throw error;
       
       return { data: insertedData as T, error: null };
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error inserting data into ${table}:`, error);
       toast({
         title: "Error",
@@ -124,7 +134,7 @@ export function useSupabaseData() {
       if (error) throw error;
       
       return { data: updatedData as T, error: null };
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error updating data in ${table}:`, error);
       toast({
         title: "Error",
@@ -153,7 +163,7 @@ export function useSupabaseData() {
       if (error) throw error;
       
       return { success: true, error: null };
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error deleting data from ${table}:`, error);
       toast({
         title: "Error",
@@ -197,6 +207,11 @@ export function useSupabaseData() {
           
         if (deleteError) throw deleteError;
         
+        toast({
+          title: "Bookmark removed",
+          description: "Item removed from your bookmarks"
+        });
+        
         return { bookmarked: false, error: null };
       } else {
         // Add bookmark if it doesn't exist
@@ -211,10 +226,20 @@ export function useSupabaseData() {
           
         if (insertError) throw insertError;
         
+        toast({
+          title: "Bookmarked",
+          description: "Item added to your bookmarks"
+        });
+        
         return { bookmarked: true, error: null };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error toggling bookmark:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to update bookmark: ${error.message || "Unknown error"}`,
+        variant: "destructive"
+      });
       return { bookmarked: false, error };
     } finally {
       setLoading(false);
@@ -227,6 +252,8 @@ export function useSupabaseData() {
     itemId: string,
     userId: string
   ): Promise<boolean> {
+    if (!userId) return false;
+    
     try {
       const { data, error } = await supabase
         .from('bookmarks')

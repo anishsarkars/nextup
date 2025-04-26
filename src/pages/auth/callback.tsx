@@ -13,6 +13,7 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // Get the session from the URL
         const { error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -34,6 +35,17 @@ export default function AuthCallback() {
         
         if (profileError && profileError.code !== 'PGRST116') { // PGRST116 = no rows returned
           throw new Error(profileError.message);
+        }
+        
+        // Create profile if it doesn't exist yet
+        if (!profile) {
+          const { error: createError } = await supabase
+            .from('profiles')
+            .insert([{ id: userData.user.id }]);
+          
+          if (createError) {
+            throw new Error(createError.message);
+          }
         }
         
         if (!profile || !profile.linkedin_url || !profile.github_url) {
