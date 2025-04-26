@@ -4,7 +4,7 @@
 
 **URL**: nexttup.vercel.app
 
-🌟 NextUP
+**🌟 NextUP**
 NextUP is a minimal yet powerful platform designed for students to discover opportunities, collaborate on projects, and exchange skills. Whether you're looking for scholarships, hackathons, or a team to build your next big idea — NextUP has you covered.
 
 🚀 Features
@@ -52,7 +52,7 @@ Frontend: React (Vite) + TailwindCSS + ShadCN UI
 
 Backend: Supabase (Auth, Database, Real-time Notifications)
 
-Payments: Stripe
+Payments: Dodopayments
 
 Deployment: Vercel
 
@@ -88,9 +88,6 @@ Deploy on Vercel:
 Follow Vercel’s deployment instructions for seamless production setup.
 
 📂 Project Structure
-java
-Copy
-Edit
 nextup/
 ├── public/
 ├── src/
@@ -146,7 +143,7 @@ Make your changes
 Submit a pull request
 
 🙌 Acknowledgements
-Designed @ Anish
+by @Anish
 Built with ❤️ for students, by students.
 
 📄 License
