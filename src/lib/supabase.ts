@@ -1,32 +1,45 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// These environment variables need to be set up in your Supabase project
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Use default placeholder values for development
+// In production, these should be set in your environment
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase credentials. Please add them to your environment variables.');
+// Log a warning if we're using placeholder values
+if (supabaseUrl === 'https://placeholder-project.supabase.co' || 
+    supabaseAnonKey === 'placeholder-anon-key') {
+  console.warn('Using placeholder Supabase credentials. Please set up your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Helper function to get the current session
 export const getSession = async () => {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    console.error('Error getting session:', error.message);
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error('Error getting session:', error.message);
+      return null;
+    }
+    return data.session;
+  } catch (error) {
+    console.error('Error in getSession:', error);
     return null;
   }
-  return data.session;
 };
 
 // Helper function to get the current user
 export const getCurrentUser = async () => {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) {
-    console.error('Error getting user:', error.message);
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      console.error('Error getting user:', error.message);
+      return null;
+    }
+    return data.user;
+  } catch (error) {
+    console.error('Error in getCurrentUser:', error);
     return null;
   }
-  return data.user;
 };
