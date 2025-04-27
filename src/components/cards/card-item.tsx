@@ -9,25 +9,63 @@ import { cn } from "@/lib/utils";
 import { Project, Gig, Event } from '@/hooks/use-supabase-data';
 
 export interface CardItemProps {
-  item: Project | Gig | Event;
-  type: 'project' | 'gig' | 'hackathon' | 'event';
+  item?: Project | Gig | Event;
+  id?: string; // Add id as an optional prop
+  type: 'project' | 'gig' | 'hackathon' | 'event' | 'scholarship'; // Add 'scholarship' type
+  title?: string;
+  description?: string;
+  tags?: string[];
+  creator?: { name?: string; avatar?: string };
+  detailsUrl?: string;
+  metadata?: { icon: React.ReactNode; value: string }[];
+  actionLabel?: string;
+  onAction?: (id: string) => void;
   onBookmark?: (id: string) => void;
-  onApply?: (id: string) => void;
   isBookmarked?: boolean;
+  bookmarked?: boolean; // For compatibility with some components
 }
 
-export function CardItem({ item, type, onBookmark, onApply, isBookmarked = false }: CardItemProps) {
+export function CardItem({ 
+  item, 
+  id, 
+  type, 
+  title, 
+  description, 
+  tags, 
+  creator, 
+  detailsUrl, 
+  metadata, 
+  actionLabel, 
+  onAction, 
+  onBookmark, 
+  isBookmarked = false,
+  bookmarked = false
+}: CardItemProps) {
+  
+  // Use either provided props or extract from item
+  const itemId = id || (item?.id);
+  const itemTitle = title || (item?.title);
+  const itemDescription = description || (item?.description);
+  const itemTags = tags || (
+    type === 'project' 
+      ? (item as Project)?.skill_tags || (item as Project)?.tags || [] 
+      : (item as Gig | Event)?.tags || []
+  );
+  const isBookmarkedValue = isBookmarked || bookmarked;
+  
   // Helpers for rendering different card types
   const getCardBadgeColor = () => {
     switch (type) {
       case 'project':
         return 'bg-blue-100 text-blue-800';
       case 'gig':
-        if ((item as Gig).gig_type === 'offering') return 'bg-emerald-100 text-emerald-800';
+        if ((item as Gig)?.gig_type === 'offering') return 'bg-emerald-100 text-emerald-800';
         return 'bg-purple-100 text-purple-800';
       case 'hackathon':
       case 'event':
         return 'bg-amber-100 text-amber-800';
+      case 'scholarship':
+        return 'bg-indigo-100 text-indigo-800';
       default:
         return '';
     }
@@ -41,6 +79,7 @@ export function CardItem({ item, type, onBookmark, onApply, isBookmarked = false
         return <Clock className="h-4 w-4 mr-1" />;
       case 'hackathon':
       case 'event':
+      case 'scholarship':
         return <Calendar className="h-4 w-4 mr-1" />;
       default:
         return null;
@@ -52,24 +91,15 @@ export function CardItem({ item, type, onBookmark, onApply, isBookmarked = false
       case 'project':
         return 'Project';
       case 'gig':
-        return (item as Gig).gig_type === 'offering' ? 'Skill Offered' : 'Skill Wanted';
+        return (item as Gig)?.gig_type === 'offering' ? 'Skill Offered' : 'Skill Wanted';
       case 'hackathon':
         return 'Hackathon';
       case 'event':
         return 'Event';
+      case 'scholarship':
+        return 'Scholarship';
       default:
         return '';
-    }
-  };
-
-  // Helper functions to unify accessing different field names
-  const getTags = () => {
-    if (type === 'project') {
-      return (item as Project).tags || (item as Project).skill_tags || [];
-    } else if (type === 'gig') {
-      return (item as Gig).tags || [];
-    } else {
-      return (item as Event).tags || [];
     }
   };
   
@@ -82,7 +112,7 @@ export function CardItem({ item, type, onBookmark, onApply, isBookmarked = false
               {getCardIcon()}
               {getCardTypeName()}
             </Badge>
-            {isBookmarked && (
+            {isBookmarkedValue && (
               <Badge variant="outline" className="font-normal">Bookmarked</Badge>
             )}
           </div>
@@ -91,106 +121,43 @@ export function CardItem({ item, type, onBookmark, onApply, isBookmarked = false
             <Button 
               variant="ghost" 
               size="icon" 
-              className={cn("h-8 w-8", isBookmarked ? "text-amber-500" : "text-muted-foreground")}
-              onClick={() => onBookmark(item.id)}
-              aria-label={isBookmarked ? "Remove bookmark" : "Bookmark"}
+              className={cn("h-8 w-8", isBookmarkedValue ? "text-amber-500" : "text-muted-foreground")}
+              onClick={() => onBookmark(itemId || "")}
+              aria-label={isBookmarkedValue ? "Remove bookmark" : "Bookmark"}
             >
               <Bookmark className="h-4 w-4" />
             </Button>
           )}
         </div>
         
-        <CardTitle className="text-xl line-clamp-2">{item.title}</CardTitle>
-        <CardDescription className="line-clamp-2">{item.description}</CardDescription>
+        <CardTitle className="text-xl line-clamp-2">{itemTitle}</CardTitle>
+        <CardDescription className="line-clamp-2">{itemDescription}</CardDescription>
       </CardHeader>
       
       <CardContent className="flex-grow">
         {/* Tags */}
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {getTags().slice(0, 3).map((tag) => (
+          {itemTags.slice(0, 3).map((tag) => (
             <Badge key={tag} variant="secondary" className="text-xs">
               {tag}
             </Badge>
           ))}
-          {getTags().length > 3 && (
+          {itemTags.length > 3 && (
             <Badge variant="outline" className="text-xs">
-              +{getTags().length - 3} more
+              +{itemTags.length - 3} more
             </Badge>
           )}
         </div>
         
-        {/* Type specific content */}
-        {type === 'project' && (
+        {/* Metadata display */}
+        {metadata && metadata.length > 0 && (
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p className="flex items-center">
-              <Clock className="h-3.5 w-3.5 mr-1.5" />
-              <span>Deadline: </span>
-              <span className="ml-1 font-medium">{(item as Project).deadline}</span>
-            </p>
-            
-            <p className="flex items-center">
-              <User className="h-3.5 w-3.5 mr-1.5" />
-              <span>Looking for: </span>
-              <span className="ml-1 font-medium">{(item as Project).roles_needed.join(', ')}</span>
-            </p>
-          </div>
-        )}
-        
-        {type === 'gig' && (
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p className="flex items-center">
-              <Clock className="h-3.5 w-3.5 mr-1.5" />
-              <span>Rate: </span>
-              <span className="ml-1 font-medium">{(item as Gig).rate}</span>
-            </p>
-            
-            <p className="flex items-center">
-              <Calendar className="h-3.5 w-3.5 mr-1.5" />
-              <span>Duration: </span>
-              <span className="ml-1 font-medium">{(item as Gig).duration}</span>
-            </p>
-            
-            <p className="flex items-center">
-              <User className="h-3.5 w-3.5 mr-1.5" />
-              <span>Availability: </span>
-              <span className="ml-1 font-medium">{(item as Gig).availability}</span>
-            </p>
-          </div>
-        )}
-        
-        {(type === 'hackathon' || type === 'event') && (
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p className="flex items-center">
-              <Calendar className="h-3.5 w-3.5 mr-1.5" />
-              <span>Date: </span>
-              <span className="ml-1 font-medium">{(item as Event).date}</span>
-            </p>
-            
-            <p className="flex items-center">
-              <MapPin className="h-3.5 w-3.5 mr-1.5" />
-              <span>Location: </span>
-              <span className="ml-1 font-medium">{(item as Event).location}</span>
-            </p>
-            
-            <p className="flex items-center">
-              <User className="h-3.5 w-3.5 mr-1.5" />
-              <span>Organizer: </span>
-              <span className="ml-1 font-medium">{(item as Event).organizer}</span>
-            </p>
-            
-            {(item as Event).link && (
-              <p className="flex items-center">
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                <a 
-                  href={(item as Event).link} 
-                  className="ml-1 font-medium text-primary hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Event Website
-                </a>
+            {metadata.map((meta, index) => meta && (
+              <p key={index} className="flex items-center">
+                {meta.icon && <span className="mr-1.5">{meta.icon}</span>}
+                <span className="font-medium">{meta.value}</span>
               </p>
-            )}
+            ))}
           </div>
         )}
       </CardContent>
@@ -199,32 +166,32 @@ export function CardItem({ item, type, onBookmark, onApply, isBookmarked = false
         <div className="flex items-center gap-2">
           <Avatar className="h-6 w-6">
             <AvatarFallback>
-              {type === 'project' ? 
-                ((item as Project).creator?.name?.charAt(0) || 'U') : 
-                type === 'gig' ? 
-                  ((item as Gig).poster?.name?.charAt(0) || 'U') : 
-                  (item as Event).organizer?.charAt(0) || 'O'}
+              {creator?.name?.charAt(0) || 'U'}
             </AvatarFallback>
           </Avatar>
           <span className="text-xs text-muted-foreground">
-            {type === 'project' ? 
-              ((item as Project).creator?.name) : 
-              type === 'gig' ? 
-                ((item as Gig).poster?.name) : 
-                (item as Event).organizer}
+            {creator?.name || 'Unknown'}
           </span>
         </div>
         
-        {onApply && (
+        {(onAction || detailsUrl) && (
           <Button 
             variant="default" 
             size="sm"
-            onClick={() => onApply(item.id)}
+            onClick={() => onAction && onAction(itemId || "")}
             className="text-xs py-1 h-7"
+            {...(detailsUrl ? { 
+              as: 'a', 
+              href: detailsUrl,
+              target: "_blank",
+              rel: "noopener noreferrer"
+            } : {})}
           >
-            {type === 'project' ? 'Join Project' : 
-             type === 'gig' ? ((item as Gig).gig_type === 'offering' ? 'Request Help' : 'Offer Help') : 
-             'Register'}
+            {actionLabel || (
+              type === 'project' ? 'Join Project' : 
+              type === 'gig' ? ((item as Gig)?.gig_type === 'offering' ? 'Request Help' : 'Offer Help') : 
+              'View Details'
+            )}
           </Button>
         )}
       </CardFooter>

@@ -11,9 +11,23 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MultiSelector } from "@/components/ui/multi-selector"; // Now we've created this component
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from "@/components/ui/form";
+import { MultiSelector } from "@/components/ui/multi-selector";
 
 const projectSchema = z.object({
   title: z.string().min(3, {
@@ -29,6 +43,8 @@ const projectSchema = z.object({
   is_private: z.boolean().default(false)
 });
 
+type ProjectFormValues = z.infer<typeof projectSchema>;
+
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,9 +57,13 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors }, control, reset } = useForm({
+  const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      tags: [],
       is_private: false
     }
   });
@@ -61,7 +81,7 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
     "Other"
   ];
 
-  const handleCreateProject = async (data: z.infer<typeof projectSchema>) => {
+  const handleCreateProject = async (data: ProjectFormValues) => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -95,7 +115,7 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
       
       // Reset the form
-      reset();
+      form.reset();
     } catch (error: any) {
       console.error("Error creating project:", error);
       toast({
@@ -117,93 +137,122 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
         <DialogHeader>
           <DialogTitle>Create a New Project</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleCreateProject)} className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <label htmlFor="title">Title</label>
-            <Input
-              id="title"
-              placeholder="Project Title"
-              {...register("title")}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleCreateProject)} className="grid gap-4 py-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem className="grid gap-2">
+                  <FormLabel htmlFor="title">Title</FormLabel>
+                  <FormControl>
+                    <Input id="title" placeholder="Project Title" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.title && (
-              <p className="text-sm text-red-500">{errors.title.message}</p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="description">Description</label>
-            <Textarea
-              id="description"
-              placeholder="Project Description"
-              {...register("description")}
+            
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem className="grid gap-2">
+                  <FormLabel htmlFor="description">Description</FormLabel>
+                  <FormControl>
+                    <Textarea id="description" placeholder="Project Description" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.description && (
-              <p className="text-sm text-red-500">{errors.description.message}</p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="category">Category</label>
-            <Select
-              control={control}
+            
+            <FormField
+              control={form.control}
               name="category"
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.category && (
-              <p className="text-sm text-red-500">{errors.category.message}</p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="tags">Tags</label>
-            <MultiSelector
-              control={control}
+              render={({ field }) => (
+                <FormItem className="grid gap-2">
+                  <FormLabel htmlFor="category">Category</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
               name="tags"
-              placeholder="Add some tags"
-              options={[
-                { value: "react", label: "React" },
-                { value: "typescript", label: "TypeScript" },
-                { value: "javascript", label: "JavaScript" },
-                { value: "node", label: "Node.js" },
-                { value: "python", label: "Python" },
-                { value: "django", label: "Django" },
-                { value: "flask", label: "Flask" },
-                { value: "tailwindcss", label: "TailwindCSS" },
-                { value: "nextjs", label: "Next.js" },
-                { value: "supabase", label: "Supabase" }
-              ]}
+              render={({ field }) => (
+                <FormItem className="grid gap-2">
+                  <FormLabel htmlFor="tags">Tags</FormLabel>
+                  <FormControl>
+                    <MultiSelector
+                      control={form.control}
+                      name="tags"
+                      placeholder="Add some tags"
+                      options={[
+                        { value: "react", label: "React" },
+                        { value: "typescript", label: "TypeScript" },
+                        { value: "javascript", label: "JavaScript" },
+                        { value: "node", label: "Node.js" },
+                        { value: "python", label: "Python" },
+                        { value: "django", label: "Django" },
+                        { value: "flask", label: "Flask" },
+                        { value: "tailwindcss", label: "TailwindCSS" },
+                        { value: "nextjs", label: "Next.js" },
+                        { value: "supabase", label: "Supabase" }
+                      ]}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.tags && (
-              <p className="text-sm text-red-500">{errors.tags.message}</p>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="is_private"
-              {...register("is_private")}
-              defaultChecked={false}
+            
+            <FormField
+              control={form.control}
+              name="is_private"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 py-2">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Private Project?
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
             />
-            <label
-              htmlFor="is_private"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            
+            <Button
+              type="submit"
+              disabled={isLoading}
             >
-              Private Project?
-            </label>
-          </div>
-          <Button
-            type="submit"
-            disabled={isLoading}
-          >
-            {isLoading ? "Creating..." : "Create Project"}
-          </Button>
-        </form>
+              {isLoading ? "Creating..." : "Create Project"}
+            </Button>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
