@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -10,8 +9,8 @@ import { Project, Gig, Event } from '@/hooks/use-supabase-data';
 
 export interface CardItemProps {
   item?: Project | Gig | Event;
-  id?: string; // Add id as an optional prop
-  type: 'project' | 'gig' | 'hackathon' | 'event' | 'scholarship'; // Add 'scholarship' type
+  id?: string;
+  type: 'project' | 'gig' | 'hackathon' | 'event' | 'scholarship';
   title?: string;
   description?: string;
   tags?: string[];
@@ -22,7 +21,7 @@ export interface CardItemProps {
   onAction?: (id: string) => void;
   onBookmark?: (id: string) => void;
   isBookmarked?: boolean;
-  bookmarked?: boolean; // For compatibility with some components
+  bookmarked?: boolean;
 }
 
 export function CardItem({ 
@@ -42,7 +41,6 @@ export function CardItem({
   bookmarked = false
 }: CardItemProps) {
   
-  // Use either provided props or extract from item
   const itemId = id || (item?.id);
   const itemTitle = title || (item?.title);
   const itemDescription = description || (item?.description);
@@ -53,7 +51,6 @@ export function CardItem({
   );
   const isBookmarkedValue = isBookmarked || bookmarked;
   
-  // Helpers for rendering different card types
   const getCardBadgeColor = () => {
     switch (type) {
       case 'project':
@@ -135,7 +132,6 @@ export function CardItem({
       </CardHeader>
       
       <CardContent className="flex-grow">
-        {/* Tags */}
         <div className="flex flex-wrap gap-1.5 mb-3">
           {itemTags.slice(0, 3).map((tag) => (
             <Badge key={tag} variant="secondary" className="text-xs">
@@ -149,7 +145,6 @@ export function CardItem({
           )}
         </div>
         
-        {/* Metadata display */}
         {metadata && metadata.length > 0 && (
           <div className="space-y-2 text-sm text-muted-foreground">
             {metadata.map((meta, index) => meta && (

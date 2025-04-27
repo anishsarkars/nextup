@@ -21,6 +21,7 @@ export interface Project extends BaseItem {
   external_links: any[];
   // Support legacy field names
   tags?: string[];
+  category?: string;
 }
 
 // Gig type for skillswap
@@ -35,6 +36,7 @@ export interface Gig extends BaseItem {
   // Support for compatibility with Project type
   skill_tags?: string[];
   roles_needed?: string[];
+  category?: string;
 }
 
 // Hackathon/Event type for discover
@@ -49,11 +51,22 @@ export interface Event extends BaseItem {
   skill_tags?: string[];
   roles_needed?: string[];
   external_links?: any[];
+  category?: string;
 }
 
-type DataType = 'projects' | 'gigs' | 'events' | 'hackathons';
+// Scholarship type for discover page
+export interface Scholarship extends BaseItem {
+  amount: string;
+  deadline: string;
+  organization: string;
+  link: string;
+  tags: string[];
+  category?: string;
+}
 
-// Mock data for development
+type DataType = 'projects' | 'gigs' | 'events' | 'hackathons' | 'scholarships';
+
+// Comprehensive mock data for development
 const mockProjects: Project[] = [
   {
     id: "1",
@@ -66,6 +79,7 @@ const mockProjects: Project[] = [
     deadline: "2023-08-15",
     external_links: [],
     created_at: "2023-05-20T10:30:00Z",
+    category: "Mobile App"
   },
   {
     id: "2",
@@ -78,6 +92,20 @@ const mockProjects: Project[] = [
     deadline: "2023-09-01",
     external_links: [],
     created_at: "2023-05-22T14:15:00Z",
+    category: "Web Development"
+  },
+  {
+    id: "3",
+    title: "AI Study Buddy",
+    description: "An AI-powered study assistant that helps students create flashcards, quizzes, and study schedules.",
+    owner_id: "user3",
+    creator: { name: "Jamie Lee", avatar: null },
+    skill_tags: ["python", "machine-learning", "api-development"],
+    roles_needed: ["ML Engineer", "Backend Developer", "UX Researcher"],
+    deadline: "2023-10-15",
+    external_links: [],
+    created_at: "2023-05-25T11:30:00Z",
+    category: "AI/ML"
   },
 ];
 
@@ -107,6 +135,19 @@ const mockGigs: Gig[] = [
     availability: "Within 2 weeks",
     tags: ["design", "logo", "branding"],
     created_at: "2023-05-21T16:20:00Z",
+  },
+  {
+    id: "3",
+    title: "Mobile App UI Design",
+    description: "Need help designing the UI for a new fitness tracking app aimed at college students.",
+    poster_id: "user2",
+    poster: { name: "Sam Chen", avatar: null },
+    gig_type: "seeking",
+    rate: "$35/hr",
+    duration: "5-10 hours",
+    availability: "Weekdays after 4pm",
+    tags: ["ui-design", "mobile", "figma"],
+    created_at: "2023-05-23T13:10:00Z",
   }
 ];
 
@@ -132,10 +173,57 @@ const mockHackathons: Event[] = [
     link: "https://aichallenge.example.com",
     tags: ["AI", "machine-learning", "virtual"],
     created_at: "2023-05-05T11:30:00Z",
+  },
+  {
+    id: "3",
+    title: "Green Tech Hackathon",
+    description: "Build sustainable tech solutions to address environmental challenges facing campuses today.",
+    date: "2023-08-05",
+    location: "Engineering Building",
+    organizer: "Environmental Science Club",
+    link: "https://greentech.example.com",
+    tags: ["sustainability", "green-tech", "iot"],
+    created_at: "2023-05-10T14:45:00Z",
   }
 ];
 
-export const useSupabaseData = <T extends Project | Gig | Event>(
+const mockScholarships: Scholarship[] = [
+  {
+    id: "1",
+    title: "Future Tech Leaders Scholarship",
+    description: "For undergraduate students pursuing degrees in computer science or related fields.",
+    amount: "$5,000",
+    deadline: "2023-09-30",
+    organization: "Tech Foundation",
+    link: "https://techscholarship.example.com",
+    tags: ["undergraduate", "computer-science", "merit-based"],
+    created_at: "2023-05-15T10:00:00Z",
+  },
+  {
+    id: "2",
+    title: "Women in STEM Grant",
+    description: "Supporting women pursuing careers in science, technology, engineering, or mathematics.",
+    amount: "$7,500",
+    deadline: "2023-08-15",
+    organization: "Women's Tech Alliance",
+    link: "https://womeninstem.example.com",
+    tags: ["women", "stem", "diversity"],
+    created_at: "2023-05-12T09:15:00Z",
+  },
+  {
+    id: "3",
+    title: "Global Innovation Fellowship",
+    description: "For graduate students researching innovative solutions to global challenges.",
+    amount: "$10,000",
+    deadline: "2023-10-15",
+    organization: "Global Innovation Fund",
+    link: "https://globalinnovation.example.com",
+    tags: ["graduate", "research", "international"],
+    created_at: "2023-05-18T14:30:00Z",
+  }
+];
+
+export const useSupabaseData = <T extends Project | Gig | Event | Scholarship>(
   type: DataType,
   options?: {
     filters?: Record<string, any>;
@@ -144,11 +232,12 @@ export const useSupabaseData = <T extends Project | Gig | Event>(
 ) => {
   const isConfigured = isSupabaseConfigured();
   
-  return useQuery({
+  return useQuery<T[]>({
     queryKey: [type, options?.filters],
     queryFn: async () => {
       if (!isConfigured) {
-        // Return mock data if Supabase is not configured
+        // Return rich mock data if Supabase is not configured
+        console.log(`Using mock ${type} data since Supabase is not configured`);
         switch (type) {
           case 'projects':
             return mockProjects as T[];
@@ -157,35 +246,67 @@ export const useSupabaseData = <T extends Project | Gig | Event>(
           case 'events':
           case 'hackathons':
             return mockHackathons as T[];
+          case 'scholarships':
+            return mockScholarships as T[];
           default:
             return [] as T[];
         }
       }
       
       // Real Supabase query implementation when configured
-      let query = supabase.from(type).select('*');
-      
-      if (options?.filters) {
-        Object.entries(options.filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== '') {
-            if (Array.isArray(value) && value.length > 0) {
-              query = query.contains(key, value);
-            } else {
-              query = query.eq(key, value);
+      try {
+        let query = supabase.from(type).select('*');
+        
+        if (options?.filters) {
+          Object.entries(options.filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              if (Array.isArray(value) && value.length > 0) {
+                query = query.contains(key, value);
+              } else if (typeof value === 'string' && value.includes('%')) {
+                query = query.ilike(key, value);
+              } else {
+                query = query.eq(key, value);
+              }
             }
-          }
-        });
+          });
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error(`Error fetching ${type}:`, error);
+          throw error;
+        }
+        
+        return data as T[];
+      } catch (error) {
+        console.error(`Error in Supabase query for ${type}:`, error);
+        // Fallback to mock data if query fails
+        console.log(`Falling back to mock ${type} data due to error`);
+        switch (type) {
+          case 'projects':
+            return mockProjects as T[];
+          case 'gigs':
+            return mockGigs as T[];
+          case 'events':
+          case 'hackathons':
+            return mockHackathons as T[];
+          case 'scholarships':
+            return mockScholarships as T[];
+          default:
+            return [] as T[];
+        }
       }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error(`Error fetching ${type}:`, error);
-        throw error;
-      }
-      
-      return data as T[];
     },
     enabled: options?.enabled !== false,
+    retry: isConfigured ? 1 : 0, // Don't retry if not configured
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
+};
+
+// Helper function to get a better error message
+export const getErrorMessage = (error: any): string => {
+  if (typeof error === 'string') return error;
+  if (error?.message) return error.message;
+  return 'An unknown error occurred';
 };

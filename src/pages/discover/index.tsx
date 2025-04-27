@@ -12,15 +12,6 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
   Filter,
   Bookmark,
   Clock,
@@ -35,31 +26,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ErrorFallback } from "@/components/ui/error-fallback";
 import { CardItem } from "@/components/cards/card-item";
-
-// Types
-interface Scholarship {
-  id: string;
-  title: string;
-  description: string;
-  amount: string;
-  deadline: string;
-  organization: string;
-  link: string;
-  tags: string[];
-  created_at: string;
-}
-
-interface Hackathon {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  location: string;
-  organizer: string;
-  link: string;
-  tags: string[];
-  created_at: string;
-}
+import { Scholarship, useSupabaseData } from "@/hooks/use-supabase-data";
 
 export default function Discover() {
   const [activeTab, setActiveTab] = useState("scholarships");
@@ -75,34 +42,11 @@ export default function Discover() {
     isLoading: scholarshipsLoading,
     isError: scholarshipsError,
     refetch: refetchScholarships,
-  } = useQuery({
-    queryKey: ["scholarships", searchQuery, category],
-    queryFn: async () => {
-      if (!supabaseConfigured) {
-        return [];
-      }
-
-      try {
-        let query = supabase.from("scholarships").select("*");
-
-        if (searchQuery) {
-          query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
-        }
-
-        if (category && category !== "all") {
-          query = query.eq("category", category);
-        }
-
-        const { data, error } = await query.order("created_at", { ascending: false });
-
-        if (error) throw error;
-        return data as Scholarship[];
-      } catch (error) {
-        console.error("Error fetching scholarships:", error);
-        throw error;
-      }
-    },
-    enabled: supabaseConfigured,
+  } = useSupabaseData<Scholarship>('scholarships', {
+    filters: searchQuery ? { 
+      description: `%${searchQuery}%`, 
+      ...(category !== "all" ? { category } : {})
+    } : (category !== "all" ? { category } : {})
   });
 
   // Fetch hackathons
@@ -111,30 +55,10 @@ export default function Discover() {
     isLoading: hackathonsLoading,
     isError: hackathonsError,
     refetch: refetchHackathons,
-  } = useQuery({
-    queryKey: ["hackathons", searchQuery],
-    queryFn: async () => {
-      if (!supabaseConfigured) {
-        return [];
-      }
-
-      try {
-        let query = supabase.from("hackathons").select("*");
-
-        if (searchQuery) {
-          query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
-        }
-
-        const { data, error } = await query.order("date", { ascending: true });
-
-        if (error) throw error;
-        return data as Hackathon[];
-      } catch (error) {
-        console.error("Error fetching hackathons:", error);
-        throw error;
-      }
-    },
-    enabled: supabaseConfigured,
+  } = useSupabaseData('hackathons', {
+    filters: searchQuery ? { 
+      description: `%${searchQuery}%`
+    } : undefined
   });
 
   // Handle bookmark toggling
@@ -150,9 +74,8 @@ export default function Discover() {
 
     if (!supabaseConfigured) {
       toast({
-        title: "Supabase not configured",
-        description: "Bookmarking requires Supabase configuration.",
-        variant: "destructive",
+        title: "Demo Mode",
+        description: "Bookmarking is not available in demo mode",
       });
       return;
     }
@@ -274,12 +197,7 @@ export default function Discover() {
           </TabsList>
 
           <TabsContent value="scholarships" className="animate-fade-in">
-            {!supabaseConfigured ? (
-              <ErrorFallback
-                title="Supabase Not Configured"
-                message="Scholarship data requires a Supabase connection. Please set up your environment variables."
-              />
-            ) : scholarshipsLoading ? (
+            {scholarshipsLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
@@ -325,12 +243,7 @@ export default function Discover() {
           </TabsContent>
 
           <TabsContent value="hackathons" className="animate-fade-in">
-            {!supabaseConfigured ? (
-              <ErrorFallback
-                title="Supabase Not Configured"
-                message="Hackathon data requires a Supabase connection. Please set up your environment variables."
-              />
-            ) : hackathonsLoading ? (
+            {hackathonsLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
