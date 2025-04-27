@@ -1,186 +1,233 @@
 
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import React from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookmarkIcon, ExternalLink, Heart } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { useSupabaseData } from "@/hooks/use-supabase-data";
-import { toast } from "@/hooks/use-toast";
+import { Bookmark, Calendar, Clock, ExternalLink, MapPin, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Project, Gig, Event } from '@/hooks/use-supabase-data';
 
-interface CardItemProps {
-  id: string;
-  type: 'scholarship' | 'event' | 'project' | 'gig';
-  title: string;
-  description: string;
-  tags: string[];
-  image?: string;
-  creator?: {
-    name: string;
-    avatar?: string;
-  };
-  bookmarked?: boolean;
-  detailsUrl: string;
-  metadata?: {
-    [key: string]: any;
-    icon?: JSX.Element;
-  }[];
-  actionLabel?: string;
-  onAction?: () => void;
+export interface CardItemProps {
+  item: Project | Gig | Event;
+  type: 'project' | 'gig' | 'hackathon' | 'event';
+  onBookmark?: (id: string) => void;
+  onApply?: (id: string) => void;
+  isBookmarked?: boolean;
 }
 
-export function CardItem({
-  id,
-  type,
-  title,
-  description,
-  tags,
-  image,
-  creator,
-  bookmarked: initialBookmarked = false,
-  detailsUrl,
-  metadata = [],
-  actionLabel = "View Details",
-  onAction,
-}: CardItemProps) {
-  const { user } = useAuth();
-  const { toggleBookmark } = useSupabaseData();
-  const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
-  const [isBookmarking, setIsBookmarking] = useState(false);
-
-  // Get background color for types
-  const getTypeColor = (type: string) => {
+export function CardItem({ item, type, onBookmark, onApply, isBookmarked = false }: CardItemProps) {
+  // Helpers for rendering different card types
+  const getCardBadgeColor = () => {
     switch (type) {
-      case 'scholarship':
-        return 'bg-pastel-blue/20';
-      case 'event':
-        return 'bg-pastel-purple/20';
       case 'project':
-        return 'bg-pastel-green/20';
+        return 'bg-blue-100 text-blue-800';
       case 'gig':
-        return 'bg-pastel-orange/20';
+        if ((item as Gig).gig_type === 'offering') return 'bg-emerald-100 text-emerald-800';
+        return 'bg-purple-100 text-purple-800';
+      case 'hackathon':
+      case 'event':
+        return 'bg-amber-100 text-amber-800';
       default:
-        return 'bg-muted';
+        return '';
     }
   };
 
-  // Handle bookmark toggle
-  const handleBookmarkToggle = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to bookmark items",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsBookmarking(true);
-    
-    try {
-      const { bookmarked, error } = await toggleBookmark(type, id, user.id);
-      
-      if (error) throw error;
-      
-      setIsBookmarked(bookmarked);
-      
-      toast({
-        title: bookmarked ? "Added to bookmarks" : "Removed from bookmarks",
-        description: bookmarked ? `${title} has been bookmarked` : `${title} has been removed from bookmarks`,
-      });
-    } catch (error) {
-      console.error('Error toggling bookmark:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update bookmark",
-        variant: "destructive"
-      });
-    } finally {
-      setIsBookmarking(false);
+  const getCardIcon = () => {
+    switch (type) {
+      case 'project':
+        return <User className="h-4 w-4 mr-1" />;
+      case 'gig':
+        return <Clock className="h-4 w-4 mr-1" />;
+      case 'hackathon':
+      case 'event':
+        return <Calendar className="h-4 w-4 mr-1" />;
+      default:
+        return null;
     }
   };
 
+  const getCardTypeName = () => {
+    switch (type) {
+      case 'project':
+        return 'Project';
+      case 'gig':
+        return (item as Gig).gig_type === 'offering' ? 'Skill Offered' : 'Skill Wanted';
+      case 'hackathon':
+        return 'Hackathon';
+      case 'event':
+        return 'Event';
+      default:
+        return '';
+    }
+  };
+
+  // Helper functions to unify accessing different field names
+  const getTags = () => {
+    if (type === 'project') {
+      return (item as Project).tags || (item as Project).skill_tags || [];
+    } else if (type === 'gig') {
+      return (item as Gig).tags || [];
+    } else {
+      return (item as Event).tags || [];
+    }
+  };
+  
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="bg-card rounded-xl border p-6 hover:shadow-md transition-all"
-    >
-      <div className="flex items-center gap-4 mb-4">
-        {image ? (
-          <div className="w-12 h-12 rounded-full bg-muted flex-shrink-0 overflow-hidden">
-            <img src={image} alt={title} className="w-full h-full object-cover" />
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2">
+            <Badge className={cn("font-normal", getCardBadgeColor())}>
+              {getCardIcon()}
+              {getCardTypeName()}
+            </Badge>
+            {isBookmarked && (
+              <Badge variant="outline" className="font-normal">Bookmarked</Badge>
+            )}
           </div>
-        ) : (
-          <div className={cn("w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center", getTypeColor(type))}>
-            {type === 'scholarship' && <span className="text-lg">🎓</span>}
-            {type === 'event' && <span className="text-lg">📅</span>}
-            {type === 'project' && <span className="text-lg">👥</span>}
-            {type === 'gig' && <span className="text-lg">💼</span>}
-          </div>
-        )}
-        <div className="flex-1">
-          <h3 className="font-semibold line-clamp-1">{title}</h3>
-          {creator && (
-            <div className="flex items-center space-x-2">
-              <Avatar className="h-6 w-6">
-                {creator.avatar && <AvatarImage src={creator.avatar} />}
-                <AvatarFallback>{creator.name.charAt(0)}{creator.name.split(' ')[1]?.charAt(0) || ''}</AvatarFallback>
-              </Avatar>
-              <p className="text-sm text-muted-foreground">{creator.name}</p>
-            </div>
+          
+          {onBookmark && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn("h-8 w-8", isBookmarked ? "text-amber-500" : "text-muted-foreground")}
+              onClick={() => onBookmark(item.id)}
+              aria-label={isBookmarked ? "Remove bookmark" : "Bookmark"}
+            >
+              <Bookmark className="h-4 w-4" />
+            </Button>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("flex-shrink-0", isBookmarked ? "text-primary" : "text-muted-foreground")}
-          onClick={handleBookmarkToggle}
-          disabled={isBookmarking}
-        >
-          <BookmarkIcon className={cn("h-5 w-5", isBookmarked ? "fill-primary" : "")} />
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
         
-        {metadata && metadata.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            {metadata.map((item, i) => (
-              <div key={i} className="flex items-center text-muted-foreground">
-                {item.icon && <span className="mr-1.5">{item.icon}</span>}
-                <span className="truncate">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        
-        <div className="flex flex-wrap gap-2 mt-4">
-          {tags.map((tag, i) => (
-            <Badge key={i} variant="outline" className={cn(getTypeColor(type))}>
+        <CardTitle className="text-xl line-clamp-2">{item.title}</CardTitle>
+        <CardDescription className="line-clamp-2">{item.description}</CardDescription>
+      </CardHeader>
+      
+      <CardContent className="flex-grow">
+        {/* Tags */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {getTags().slice(0, 3).map((tag) => (
+            <Badge key={tag} variant="secondary" className="text-xs">
               {tag}
             </Badge>
           ))}
+          {getTags().length > 3 && (
+            <Badge variant="outline" className="text-xs">
+              +{getTags().length - 3} more
+            </Badge>
+          )}
         </div>
         
-        <div className="flex justify-between items-center mt-4">
-          <Link to={detailsUrl} className="text-primary text-sm flex items-center hover:underline">
-            <ExternalLink className="h-4 w-4 mr-1" />
-            Details
-          </Link>
-          <Button onClick={onAction} size="sm">
-            {actionLabel}
-          </Button>
+        {/* Type specific content */}
+        {type === 'project' && (
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p className="flex items-center">
+              <Clock className="h-3.5 w-3.5 mr-1.5" />
+              <span>Deadline: </span>
+              <span className="ml-1 font-medium">{(item as Project).deadline}</span>
+            </p>
+            
+            <p className="flex items-center">
+              <User className="h-3.5 w-3.5 mr-1.5" />
+              <span>Looking for: </span>
+              <span className="ml-1 font-medium">{(item as Project).roles_needed.join(', ')}</span>
+            </p>
+          </div>
+        )}
+        
+        {type === 'gig' && (
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p className="flex items-center">
+              <Clock className="h-3.5 w-3.5 mr-1.5" />
+              <span>Rate: </span>
+              <span className="ml-1 font-medium">{(item as Gig).rate}</span>
+            </p>
+            
+            <p className="flex items-center">
+              <Calendar className="h-3.5 w-3.5 mr-1.5" />
+              <span>Duration: </span>
+              <span className="ml-1 font-medium">{(item as Gig).duration}</span>
+            </p>
+            
+            <p className="flex items-center">
+              <User className="h-3.5 w-3.5 mr-1.5" />
+              <span>Availability: </span>
+              <span className="ml-1 font-medium">{(item as Gig).availability}</span>
+            </p>
+          </div>
+        )}
+        
+        {(type === 'hackathon' || type === 'event') && (
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p className="flex items-center">
+              <Calendar className="h-3.5 w-3.5 mr-1.5" />
+              <span>Date: </span>
+              <span className="ml-1 font-medium">{(item as Event).date}</span>
+            </p>
+            
+            <p className="flex items-center">
+              <MapPin className="h-3.5 w-3.5 mr-1.5" />
+              <span>Location: </span>
+              <span className="ml-1 font-medium">{(item as Event).location}</span>
+            </p>
+            
+            <p className="flex items-center">
+              <User className="h-3.5 w-3.5 mr-1.5" />
+              <span>Organizer: </span>
+              <span className="ml-1 font-medium">{(item as Event).organizer}</span>
+            </p>
+            
+            {(item as Event).link && (
+              <p className="flex items-center">
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                <a 
+                  href={(item as Event).link} 
+                  className="ml-1 font-medium text-primary hover:underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Event Website
+                </a>
+              </p>
+            )}
+          </div>
+        )}
+      </CardContent>
+      
+      <CardFooter className="border-t pt-3 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Avatar className="h-6 w-6">
+            <AvatarFallback>
+              {type === 'project' ? 
+                ((item as Project).creator?.name?.charAt(0) || 'U') : 
+                type === 'gig' ? 
+                  ((item as Gig).poster?.name?.charAt(0) || 'U') : 
+                  (item as Event).organizer?.charAt(0) || 'O'}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-xs text-muted-foreground">
+            {type === 'project' ? 
+              ((item as Project).creator?.name) : 
+              type === 'gig' ? 
+                ((item as Gig).poster?.name) : 
+                (item as Event).organizer}
+          </span>
         </div>
-      </div>
-    </motion.div>
+        
+        {onApply && (
+          <Button 
+            variant="default" 
+            size="sm"
+            onClick={() => onApply(item.id)}
+            className="text-xs py-1 h-7"
+          >
+            {type === 'project' ? 'Join Project' : 
+             type === 'gig' ? ((item as Gig).gig_type === 'offering' ? 'Request Help' : 'Offer Help') : 
+             'Register'}
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
   );
 }

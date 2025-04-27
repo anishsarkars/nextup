@@ -1,338 +1,191 @@
-import { useState } from 'react';
+
+import { useQuery } from '@tanstack/react-query';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
 
-export function useSupabaseData() {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+// Common fields shared between different data types
+interface BaseItem {
+  id: string;
+  title: string;
+  description: string;
+  created_at: string;
+}
 
-  // Check if Supabase is configured before making requests
-  const checkSupabaseConfig = () => {
-    if (!isSupabaseConfigured()) {
-      toast({
-        title: "Supabase not configured",
-        description: "Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
-        variant: "destructive"
-      });
-      return false;
-    }
-    return true;
-  };
+// Project type for collaboration
+export interface Project extends BaseItem {
+  owner_id: string;
+  creator?: { name: string; avatar: any };
+  creator_id?: string;
+  skill_tags: string[];
+  roles_needed: string[];
+  deadline: string;
+  external_links: any[];
+  // Support legacy field names
+  tags?: string[];
+}
 
-  // Generic function to fetch data with pagination
-  async function fetchData<T>(
-    table: string, 
-    options: { 
-      page?: number; 
-      perPage?: number; 
-      filters?: Record<string, any>;
-      orderBy?: { column: string; ascending?: boolean };
-      searchColumn?: string;
-      searchQuery?: string;
-      select?: string;
-    } = {}
-  ): Promise<{ data: T[] | null; count: number; error: any }> {
-    const { 
-      page = 1, 
-      perPage = 10,
-      filters = {},
-      orderBy,
-      searchColumn,
-      searchQuery,
-      select = '*'
-    } = options;
-    
-    setLoading(true);
-    
-    // Check Supabase configuration
-    if (!checkSupabaseConfig()) {
-      return { data: null, count: 0, error: "Supabase not configured" };
-    }
-    
-    try {
-      // Start building the query
-      let query = supabase
-        .from(table)
-        .select(select, { count: 'exact' });
-      
-      // Add filters
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          if (Array.isArray(value)) {
-            query = query.contains(key, value);
-          } else {
-            query = query.eq(key, value);
-          }
+// Gig type for skillswap
+export interface Gig extends BaseItem {
+  poster_id: string;
+  poster?: { name: string; avatar: any };
+  gig_type?: string; 
+  rate?: string;
+  duration?: string;
+  availability?: string;
+  tags: string[];
+  // Support for compatibility with Project type
+  skill_tags?: string[];
+  roles_needed?: string[];
+}
+
+// Hackathon/Event type for discover
+export interface Event extends BaseItem {
+  date: string;
+  location: string;
+  organizer: string;
+  link: string;
+  tags: string[];
+  // Support for compatibility with Project type
+  deadline?: string;
+  skill_tags?: string[];
+  roles_needed?: string[];
+  external_links?: any[];
+}
+
+type DataType = 'projects' | 'gigs' | 'events' | 'hackathons';
+
+// Mock data for development
+const mockProjects: Project[] = [
+  {
+    id: "1",
+    title: "Student Community App",
+    description: "Building a mobile app to connect students across campus for study groups and social events.",
+    owner_id: "user1",
+    creator: { name: "Alex Johnson", avatar: null },
+    skill_tags: ["react-native", "firebase", "ui-design"],
+    roles_needed: ["Mobile Developer", "UI/UX Designer", "Backend Developer"],
+    deadline: "2023-08-15",
+    external_links: [],
+    created_at: "2023-05-20T10:30:00Z",
+  },
+  {
+    id: "2",
+    title: "Sustainability Tracker",
+    description: "Creating a web app that helps students track and reduce their carbon footprint on campus.",
+    owner_id: "user2",
+    creator: { name: "Morgan Smith", avatar: null },
+    skill_tags: ["react", "d3js", "node"],
+    roles_needed: ["Frontend Developer", "Data Visualization Expert"],
+    deadline: "2023-09-01",
+    external_links: [],
+    created_at: "2023-05-22T14:15:00Z",
+  },
+];
+
+const mockGigs: Gig[] = [
+  {
+    id: "1",
+    title: "Python Tutoring",
+    description: "Offering Python programming tutoring for beginners. Can help with assignments and projects.",
+    poster_id: "user1",
+    poster: { name: "Jamie Doe", avatar: null },
+    gig_type: "offering",
+    rate: "$20/hr",
+    duration: "1-2 hours",
+    availability: "Weekends",
+    tags: ["python", "programming", "tutoring"],
+    created_at: "2023-05-19T09:45:00Z",
+  },
+  {
+    id: "2",
+    title: "Logo Design Needed",
+    description: "Looking for someone to design a logo for my student organization. Must be creative and understand branding.",
+    poster_id: "user3",
+    poster: { name: "Taylor Reed", avatar: null },
+    gig_type: "seeking",
+    rate: "$50 flat rate",
+    duration: "One-time project",
+    availability: "Within 2 weeks",
+    tags: ["design", "logo", "branding"],
+    created_at: "2023-05-21T16:20:00Z",
+  }
+];
+
+const mockHackathons: Event[] = [
+  {
+    id: "1",
+    title: "Campus Hack 2023",
+    description: "Annual hackathon focusing on solutions for campus life improvement. 24-hour event with prizes.",
+    date: "2023-06-15",
+    location: "University Student Center",
+    organizer: "Computer Science Society",
+    link: "https://campushack.example.com",
+    tags: ["hackathon", "beginner-friendly", "prizes"],
+    created_at: "2023-05-01T08:00:00Z",
+  },
+  {
+    id: "2",
+    title: "AI Innovation Challenge",
+    description: "Create innovative AI solutions to real-world problems. Sponsored by tech companies with internship opportunities.",
+    date: "2023-07-10",
+    location: "Virtual Event",
+    organizer: "AI Research Lab",
+    link: "https://aichallenge.example.com",
+    tags: ["AI", "machine-learning", "virtual"],
+    created_at: "2023-05-05T11:30:00Z",
+  }
+];
+
+export const useSupabaseData = <T extends Project | Gig | Event>(
+  type: DataType,
+  options?: {
+    filters?: Record<string, any>;
+    enabled?: boolean;
+  }
+) => {
+  const isConfigured = isSupabaseConfigured();
+  
+  return useQuery({
+    queryKey: [type, options?.filters],
+    queryFn: async () => {
+      if (!isConfigured) {
+        // Return mock data if Supabase is not configured
+        switch (type) {
+          case 'projects':
+            return mockProjects as T[];
+          case 'gigs':
+            return mockGigs as T[];
+          case 'events':
+          case 'hackathons':
+            return mockHackathons as T[];
+          default:
+            return [] as T[];
         }
-      });
-      
-      // Add search if provided
-      if (searchColumn && searchQuery) {
-        query = query.ilike(searchColumn, `%${searchQuery}%`);
       }
       
-      // Add ordering
-      if (orderBy) {
-        query = query.order(orderBy.column, { 
-          ascending: orderBy.ascending ?? false 
+      // Real Supabase query implementation when configured
+      let query = supabase.from(type).select('*');
+      
+      if (options?.filters) {
+        Object.entries(options.filters).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            if (Array.isArray(value) && value.length > 0) {
+              query = query.contains(key, value);
+            } else {
+              query = query.eq(key, value);
+            }
+          }
         });
-      }
-      
-      // Add pagination
-      const from = (page - 1) * perPage;
-      const to = from + perPage - 1;
-      
-      if (perPage > 0) {
-        query = query.range(from, to);
-      }
-      
-      // Execute query
-      const { data, error, count } = await query;
-      
-      if (error) throw error;
-      
-      return { 
-        data: data as T[] | null, 
-        count: count || 0,
-        error: null
-      };
-    } catch (error) {
-      console.error(`Error fetching data from ${table}:`, error);
-      toast({
-        title: `Error fetching ${table}`,
-        description: error.message || "Failed to load data. Please try again.",
-        variant: "destructive"
-      });
-      return { data: null, count: 0, error };
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Insert data into a table
-  async function insertData<T>(
-    table: string,
-    data: Record<string, any>
-  ): Promise<{ data: T | null; error: any }> {
-    setLoading(true);
-    
-    try {
-      const { data: insertedData, error } = await supabase
-        .from(table)
-        .insert(data)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      return { data: insertedData as T, error: null };
-    } catch (error: any) {
-      console.error(`Error inserting data into ${table}:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to save data: ${error.message || "Unknown error"}`,
-        variant: "destructive"
-      });
-      return { data: null, error };
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Update data in a table
-  async function updateData<T>(
-    table: string,
-    id: string,
-    data: Record<string, any>
-  ): Promise<{ data: T | null; error: any }> {
-    setLoading(true);
-    
-    try {
-      const { data: updatedData, error } = await supabase
-        .from(table)
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      return { data: updatedData as T, error: null };
-    } catch (error: any) {
-      console.error(`Error updating data in ${table}:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to update data: ${error.message || "Unknown error"}`,
-        variant: "destructive"
-      });
-      return { data: null, error };
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Delete data from a table
-  async function deleteData(
-    table: string,
-    id: string
-  ): Promise<{ success: boolean; error: any }> {
-    setLoading(true);
-    
-    try {
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      return { success: true, error: null };
-    } catch (error: any) {
-      console.error(`Error deleting data from ${table}:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to delete data: ${error.message || "Unknown error"}`,
-        variant: "destructive"
-      });
-      return { success: false, error };
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Toggle bookmark for a user
-  async function toggleBookmark(
-    itemType: 'project' | 'scholarship' | 'event' | 'gig',
-    itemId: string,
-    userId: string
-  ): Promise<{ bookmarked: boolean; error: any }> {
-    setLoading(true);
-    
-    try {
-      // Check if bookmark exists
-      const { data: existingBookmark, error: checkError } = await supabase
-        .from('bookmarks')
-        .select()
-        .eq('user_id', userId)
-        .eq('item_id', itemId)
-        .eq('item_type', itemType)
-        .single();
-      
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-        throw checkError;
-      }
-      
-      if (existingBookmark) {
-        // Delete bookmark if it exists
-        const { error: deleteError } = await supabase
-          .from('bookmarks')
-          .delete()
-          .eq('id', existingBookmark.id);
-          
-        if (deleteError) throw deleteError;
-        
-        toast({
-          title: "Bookmark removed",
-          description: "Item removed from your bookmarks"
-        });
-        
-        return { bookmarked: false, error: null };
-      } else {
-        // Add bookmark if it doesn't exist
-        const { error: insertError } = await supabase
-          .from('bookmarks')
-          .insert({
-            user_id: userId,
-            item_id: itemId,
-            item_type: itemType,
-            created_at: new Date().toISOString()
-          });
-          
-        if (insertError) throw insertError;
-        
-        toast({
-          title: "Bookmarked",
-          description: "Item added to your bookmarks"
-        });
-        
-        return { bookmarked: true, error: null };
-      }
-    } catch (error: any) {
-      console.error(`Error toggling bookmark:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to update bookmark: ${error.message || "Unknown error"}`,
-        variant: "destructive"
-      });
-      return { bookmarked: false, error };
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Check if an item is bookmarked
-  async function isBookmarked(
-    itemType: 'project' | 'scholarship' | 'event' | 'gig',
-    itemId: string,
-    userId: string
-  ): Promise<boolean> {
-    if (!userId) return false;
-    
-    try {
-      const { data, error } = await supabase
-        .from('bookmarks')
-        .select()
-        .eq('user_id', userId)
-        .eq('item_id', itemId)
-        .eq('item_type', itemType)
-        .single();
-      
-      if (error) {
-        return false;
-      }
-      
-      return !!data;
-    } catch {
-      return false;
-    }
-  }
-
-  // Get user's bookmarks
-  async function getUserBookmarks(
-    userId: string,
-    itemType?: 'project' | 'scholarship' | 'event' | 'gig'
-  ): Promise<{ data: any[]; error: any }> {
-    setLoading(true);
-    
-    try {
-      let query = supabase
-        .from('bookmarks')
-        .select('*, projects(*), scholarships(*), events(*), gigs(*)')
-        .eq('user_id', userId);
-      
-      if (itemType) {
-        query = query.eq('item_type', itemType);
       }
       
       const { data, error } = await query;
       
-      return { data: data || [], error };
-    } catch (error) {
-      console.error('Error fetching bookmarks:', error);
-      return { data: [], error };
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return {
-    loading,
-    fetchData,
-    insertData,
-    updateData,
-    deleteData,
-    toggleBookmark,
-    isBookmarked,
-    getUserBookmarks
-  };
-}
+      if (error) {
+        console.error(`Error fetching ${type}:`, error);
+        throw error;
+      }
+      
+      return data as T[];
+    },
+    enabled: options?.enabled !== false,
+  });
+};
